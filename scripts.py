@@ -143,14 +143,14 @@ def create_database(credentials):
         from psycopg2 import sql
         from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
     except ImportError:
-        print("\n❌ Error: psycopg2 no está instalado.")
+        print("\n Error: psycopg2 no está instalado.")
         print("   Instálalo con: pip install psycopg2-binary")
         return False
 
     db_name = credentials['db_name']
 
     try:
-        print(f"\n🔗 Conectando a PostgreSQL en {credentials['host']}:{credentials['port']}...")
+        print(f"\n Conectando a PostgreSQL en {credentials['host']}:{credentials['port']}...")
 
         # Conectar al servidor PostgreSQL (base de datos 'postgres' por defecto)
         conn = psycopg2.connect(
@@ -173,7 +173,7 @@ def create_database(credentials):
         exists = cursor.fetchone()
 
         if exists:
-            print(f"✅ La base de datos '{db_name}' ya existe.")
+            print(f" La base de datos '{db_name}' ya existe.")
             cursor.close()
             conn.close()
             return True
@@ -190,7 +190,7 @@ def create_database(credentials):
         return True
 
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n Error: {e}")
         print("\nVerifica que:")
         print("  - PostgreSQL esté corriendo")
         print("  - Las credenciales sean correctas")
@@ -209,7 +209,7 @@ def update_env_files(credentials):
     response = input("¿Deseas actualizar los archivos? (s/n) [s]: ").strip().lower() or 's'
 
     if response not in ['s', 'si', 'y', 'yes']:
-        print("📝 Archivos .env no fueron modificados.")
+        print(" Archivos .env no fueron modificados.")
         return
 
     # Construir la nueva DATABASE_URL con el nombre de base de datos personalizado
@@ -229,7 +229,7 @@ def update_env_files(credentials):
         filepath = os.path.join(os.path.dirname(__file__), filename)
 
         if not os.path.exists(filepath):
-            print(f"⚠️  Archivo {filename} no encontrado, omitiendo...")
+            print(f"  Archivo {filename} no encontrado, omitiendo...")
             continue
 
         try:
@@ -244,18 +244,18 @@ def update_env_files(credentials):
                     f.write(new_content)
 
                 updated_files.append(filename)
-                print(f"✅ Archivo {filename} actualizado correctamente.")
+                print(f" Archivo {filename} actualizado correctamente.")
             else:
-                print(f"⚠️  DATABASE_URL no encontrada en {filename}, omitiendo...")
+                print(f" DATABASE_URL no encontrada en {filename}, omitiendo...")
 
         except Exception as e:
-            print(f"❌ Error al actualizar {filename}: {e}")
+            print(f" Error al actualizar {filename}: {e}")
 
     if updated_files:
-        print(f"\n📝 Archivos actualizados: {', '.join(updated_files)}")
-        print(f"📝 Nueva DATABASE_URL: {new_database_url}")
+        print(f"\n Archivos actualizados: {', '.join(updated_files)}")
+        print(f" Nueva DATABASE_URL: {new_database_url}")
     else:
-        print("\n⚠️  No se actualizó ningún archivo.")
+        print("\n No se actualizó ningún archivo.")
 
 
 def cmd_createdb():
@@ -268,14 +268,14 @@ def cmd_createdb():
         success = create_database(credentials)
 
         if not success:
-            print("\n❌ No se pudo crear la base de datos.")
+            print("\n No se pudo crear la base de datos.")
             sys.exit(1)
 
         # Preguntar si desea actualizar archivos .env
         update_env_files(credentials)
 
         print("\n" + "=" * 60)
-        print("✅ Proceso completado exitosamente.")
+        print(" Proceso completado exitosamente.")
         print("=" * 60)
         print("\nPróximos pasos:")
         print("  1. Ejecuta 'python main.py' para iniciar el servidor")
@@ -284,10 +284,10 @@ def cmd_createdb():
         print()
 
     except KeyboardInterrupt:
-        print("\n\n⚠️  Proceso cancelado por el usuario.")
+        print("\n\n  Proceso cancelado por el usuario.")
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ Error inesperado: {e}")
+        print(f"\n Error inesperado: {e}")
         sys.exit(1)
 
 
