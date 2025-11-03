@@ -6,6 +6,7 @@ Script consolidado para tareas comunes de desarrollo y administración.
 
 Uso:
     python scripts.py genkey         - Generar claves seguras
+    python scripts.py createdb       - Crear base de datos PostgreSQL
     python scripts.py start          - Iniciar servidor
     python scripts.py restart        - Reiniciar servidor
     python scripts.py truncate       - Truncar base de datos (metodo seguro)
@@ -22,7 +23,9 @@ import string
 import subprocess
 import time
 import socket
+import re
 from typing import Optional
+from getpass import getpass
 
 # ==================== COMANDO: GENERAR CLAVES ====================
 
@@ -72,6 +75,220 @@ def cmd_genkey():
     print("   Usa estas claves solo en PRODUCCION")
 
     print("\n" + "=" * 60)
+
+
+# ==================== COMANDO: CREAR BASE DE DATOS ====================
+
+def normalize_db_name(name: str) -> str:
+    """Normaliza el nombre de la base de datos según las reglas."""
+    # Reemplazar espacios por guiones bajos
+    name = name.replace(" ", "_")
+    # Convertir a MAYÚSCULAS
+    name = name.upper()
+    # Remover caracteres no permitidos (solo permitir letras, números y guiones bajos)
+    name = ''.join(c for c in name if c.isalnum() or c == '_')
+    return name
+
+
+def get_db_credentials():
+    """Solicita las credenciales de PostgreSQL al usuario."""
+    print("=" * 60)
+    print("CREACIÓN DE BASE DE DATOS")
+    print("=" * 60)
+    print()
+    print("Ingresa los datos de conexión a PostgreSQL.")
+    print("Presiona ENTER para usar los valores por defecto.")
+    print()
+
+    # Solicitar nombre de la base de datos
+    print("Nombre de la base de datos:")
+    print("  - Se agregará el prefijo 'bpta_db_' automáticamente")
+    print("  - Espacios serán reemplazados por '_'")
+    print("  - Se convertirá a MAYÚSCULAS automáticamente")
+    db_suffix = input("Nombre [TEST_TEMPLATE]: ").strip() or "TEST_TEMPLATE"
+
+    # Normalizar y construir el nombre completo
+    db_suffix_normalized = normalize_db_name(db_suffix)
+    db_name = f"bpta_db_{db_suffix_normalized}"
+
+    print(f"\n✓ Nombre final de la base de datos: {db_name}")
+    print()
+
+    host = input("Host de PostgreSQL [localhost]: ").strip() or "localhost"
+    port = input("Puerto [5432]: ").strip() or "5432"
+    username = input("Usuario de PostgreSQL [postgres]: ").strip() or "postgres"
+    print("Contraseña de PostgreSQL (ENTER si está vacía):")
+    password = getpass("")
+
+    # Validar puerto
+    try:
+        port = int(port)
+    except ValueError:
+        print("Error: El puerto debe ser un número.")
+        sys.exit(1)
+
+    return {
+        "host": host,
+        "port": port,
+        "username": username,
+        "password": password,
+        "db_name": db_name
+    }
+
+
+def create_database(credentials):
+    """Crea la base de datos con el nombre especificado si no existe."""
+    try:
+        import psycopg2
+        from psycopg2 import sql
+        from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+    except ImportError:
+        print("\n❌ Error: psycopg2 no está instalado.")
+        print("   Instálalo con: pip install psycopg2-binary")
+        return False
+
+    db_name = credentials['db_name']
+
+    try:
+        print(f"\n🔗 Conectando a PostgreSQL en {credentials['host']}:{credentials['port']}...")
+
+        # Conectar al servidor PostgreSQL (base de datos 'postgres' por defecto)
+        conn = psycopg2.connect(
+            host=credentials['host'],
+            port=credentials['port'],
+            user=credentials['username'],
+            password=credentials['password'],
+            database='postgres'  # Conectar a la base de datos por defecto
+        )
+
+        # Configurar para permitir CREATE DATABASE
+        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+        cursor = conn.cursor()
+
+        # Verificar si la base de datos existe
+        cursor.execute(
+            "SELECT 1 FROM pg_database WHERE datname = %s",
+            (db_name,)
+        )
+        exists = cursor.fetchone()
+
+        if exists:
+            print(f"✅ La base de datos '{db_name}' ya existe.")
+            cursor.close()
+            conn.close()
+            return True
+
+        # Crear la base de datos
+        print(f"📦 Creando base de datos '{db_name}'...")
+        cursor.execute(sql.SQL("CREATE DATABASE {}").format(
+            sql.Identifier(db_name)
+        ))
+        print(f"✅ Base de datos '{db_name}' creada exitosamente.")
+
+        cursor.close()
+        conn.close()
+        return True
+
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        print("\nVerifica que:")
+        print("  - PostgreSQL esté corriendo")
+        print("  - Las credenciales sean correctas")
+        print("  - El host y puerto sean correctos")
+        return False
+
+
+def update_env_files(credentials):
+    """Actualiza los archivos .env y .env.example con la nueva DATABASE_URL."""
+    print("\n" + "=" * 60)
+    print("Actualización de archivos de configuración")
+    print("=" * 60)
+    print("\nEsto actualizará la variable DATABASE_URL en .env y .env.example")
+    print("con las credenciales que acabas de proporcionar.")
+    print()
+    response = input("¿Deseas actualizar los archivos? (s/n) [s]: ").strip().lower() or 's'
+
+    if response not in ['s', 'si', 'y', 'yes']:
+        print("📝 Archivos .env no fueron modificados.")
+        return
+
+    # Construir la nueva DATABASE_URL con el nombre de base de datos personalizado
+    new_database_url = (
+        f"postgresql://{credentials['username']}:{credentials['password']}"
+        f"@{credentials['host']}:{credentials['port']}/{credentials['db_name']}"
+    )
+
+    # Patrón para buscar la línea DATABASE_URL
+    pattern = re.compile(r'^DATABASE_URL\s*=\s*.*$', re.MULTILINE)
+    replacement = f"DATABASE_URL={new_database_url}"
+
+    files_to_update = ['.env', '.env.example']
+    updated_files = []
+
+    for filename in files_to_update:
+        filepath = os.path.join(os.path.dirname(__file__), filename)
+
+        if not os.path.exists(filepath):
+            print(f"⚠️  Archivo {filename} no encontrado, omitiendo...")
+            continue
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Reemplazar la línea DATABASE_URL
+            if 'DATABASE_URL' in content:
+                new_content = pattern.sub(replacement, content)
+
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(new_content)
+
+                updated_files.append(filename)
+                print(f"✅ Archivo {filename} actualizado correctamente.")
+            else:
+                print(f"⚠️  DATABASE_URL no encontrada en {filename}, omitiendo...")
+
+        except Exception as e:
+            print(f"❌ Error al actualizar {filename}: {e}")
+
+    if updated_files:
+        print(f"\n📝 Archivos actualizados: {', '.join(updated_files)}")
+        print(f"📝 Nueva DATABASE_URL: {new_database_url}")
+    else:
+        print("\n⚠️  No se actualizó ningún archivo.")
+
+
+def cmd_createdb():
+    """Crea la base de datos PostgreSQL."""
+    try:
+        # Obtener credenciales
+        credentials = get_db_credentials()
+
+        # Crear base de datos
+        success = create_database(credentials)
+
+        if not success:
+            print("\n❌ No se pudo crear la base de datos.")
+            sys.exit(1)
+
+        # Preguntar si desea actualizar archivos .env
+        update_env_files(credentials)
+
+        print("\n" + "=" * 60)
+        print("✅ Proceso completado exitosamente.")
+        print("=" * 60)
+        print("\nPróximos pasos:")
+        print("  1. Ejecuta 'python main.py' para iniciar el servidor")
+        print("  2. Las tablas se crearán automáticamente al iniciar")
+        print("  3. Accede a http://localhost:8001/docs para ver la API")
+        print()
+
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Proceso cancelado por el usuario.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\n❌ Error inesperado: {e}")
+        sys.exit(1)
 
 
 # ==================== COMANDO: INICIAR SERVIDOR ====================
@@ -281,6 +498,7 @@ def main():
 
     commands = {
         'genkey': cmd_genkey,
+        'createdb': cmd_createdb,
         'start': cmd_start,
         'restart': cmd_restart,
         'truncate': cmd_truncate,
@@ -296,6 +514,7 @@ def main():
         print(f"Error: Comando desconocido '{command}'")
         print("\nComandos disponibles:")
         print("  genkey         - Generar claves seguras")
+        print("  createdb       - Crear base de datos PostgreSQL")
         print("  start          - Iniciar servidor")
         print("  restart        - Reiniciar servidor")
         print("  truncate       - Truncar base de datos (metodo seguro)")

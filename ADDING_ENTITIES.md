@@ -8,7 +8,7 @@ Esta guía te muestra cómo agregar una nueva entidad (Alumno, Profesor, Departa
 
 La plantilla ya incluye **3 entidades base** listas para usar:
 
-### 1. **Person** - Entidad de ejemplo completa
+### 1. **Individual** - Entidad de ejemplo completa
 Demuestra todos los tipos de datos, validaciones y patrones avanzados:
 - 40+ campos con diferentes tipos de datos
 - Sistema de skills con JSONB
@@ -28,7 +28,7 @@ División administrativa por país:
 - 114 estados precargados (50 USA + 32 MX + 32 CO)
 - Validación automática de consistencia país-estado
 
-**Uso en nuevas entidades**: Puedes relacionar tus entidades con Country y State para agregar información geográfica (ejemplo: Person tiene country_id y state_id con validación).
+**Uso en nuevas entidades**: Puedes relacionar tus entidades con Country y State para agregar información geográfica (ejemplo: Individual tiene country_id y state_id con validación).
 
 ---
 
@@ -155,7 +155,7 @@ class Student(Base):
     state = relationship("State", foreign_keys=[state_id])
 ```
 
-**Validación automática país-estado**: Ver `app/entities/persons/services/person_service.py:_validate_state_country_consistency()` para implementar validación que asegure que el estado pertenece al país seleccionado.
+**Validación automática país-estado**: Ver `app/entities/individuals/services/person_service.py:_validate_state_country_consistency()` para implementar validación que asegure que el estado pertenece al país seleccionado.
 
 ---
 
@@ -573,7 +573,7 @@ A: Recomendado. Copiar estructura de `app/tests/test_persons/` y adaptar.
 A: Sí, agrega métodos específicos para queries complejas.
 
 **Q: ¿Cómo manejo enums?**
-A: Ver `app/entities/persons/schemas/enums.py` como referencia.
+A: Ver `app/entities/individuals/schemas/enums.py` como referencia.
 
 ---
 
@@ -592,4 +592,4 @@ Para agregar una nueva entidad:
 
 ---
 
-¿Necesitas ayuda? Revisa la entidad **Person** en `app/entities/persons/` como ejemplo completo con todos los tipos de datos y validaciones avanzadas.
+¿Necesitas ayuda? Revisa la entidad **Individual** en `app/entities/individuals/` como ejemplo completo con todos los tipos de datos y validaciones avanzadas.

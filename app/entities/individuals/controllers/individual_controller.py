@@ -1,5 +1,5 @@
 """
-Controller para Person
+Controller para Individual
 
 Maneja la lógica de presentación y coordina entre
 Service layer y Router layer. Mantiene compatibilidad
@@ -10,9 +10,9 @@ from typing import List, Dict, Any, Optional
 from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.entities.persons.services.person_service import PersonService
-from app.entities.persons.models.person import Person
-from app.entities.persons.schemas.enums import PersonStatusEnum
+from app.entities.individuals.services.individual_service import IndividualService
+from app.entities.individuals.models.individual import Individual
+from app.entities.individuals.schemas.enums import IndividualStatusEnum
 from app.shared.exceptions import (
     BaseAppException,
     EntityNotFoundError,
@@ -22,9 +22,9 @@ from app.shared.exceptions import (
 )
 
 
-class PersonController:
+class IndividualController:
     """
-    Controller para manejar requests HTTP de Person.
+    Controller para manejar requests HTTP de individuals.
 
     Coordina entre Router y Service layer, manejando:
     - Validación de input HTTP
@@ -35,49 +35,49 @@ class PersonController:
 
     def __init__(self, db: Session):
         self.db = db
-        self.service = PersonService(db)
+        self.service = IndividualService(db)
 
     # ==================== ENDPOINTS DE COMPATIBILIDAD ====================
 
-    def create_person(self, person_data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_individual(self, individual_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Crear persona - Compatibilidad con POST /persons/
+        Crear individuo - Compatibilidad con POST /individuals/
 
         Args:
-            person_data: Datos en formato legacy
+            individual_data: Datos en formato legacy
 
         Returns:
             Respuesta con ID, name, last_name, email
         """
         try:
-            person = self.service.create_person_legacy(person_data)
+            individual = self.service.create_individual_legacy(individual_data)
             return {
-                "id": person.id,
-                "name": person.first_name,
-                "last_name": person.last_name,
-                "email": person.email
+                "id": individual.id,
+                "name": individual.first_name,
+                "last_name": individual.last_name,
+                "email": individual.email
             }
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def get_persons(self) -> List[Dict[str, Any]]:
+    def get_individuals(self) -> List[Dict[str, Any]]:
         """
-        Listar personas activas - Compatibilidad con GET /persons/
+        Listar individuos activos - Compatibilidad con GET /individuals/
 
         Returns:
-            Lista de personas en formato PersonResponse
+            Lista de individuos en formato IndividualResponse
         """
         try:
-            persons = self.service.get_all_active_persons()
-            return [self._to_person_response(person) for person in persons]
+            individuals = self.service.get_all_active_individuals()
+            return [self._to_individual_response(individual) for individual in individuals]
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def search_persons(
+    def search_individuals(
         self,
         request: Request,
         name: Optional[str] = None,
@@ -93,7 +93,7 @@ class PersonController:
         order_desc: bool = False
     ) -> List[Dict[str, Any]]:
         """
-        Búsqueda avanzada - Compatibilidad con GET /persons/search
+        Búsqueda avanzada - Compatibilidad con GET /individuals/search
 
         Mantiene exactamente la misma funcionalidad que el endpoint original
         incluyendo filtros dinámicos desde query parameters.
@@ -110,7 +110,7 @@ class PersonController:
                 if key not in excluded_params and value:
                     additional_filters[key] = value
 
-            persons = self.service.search_persons(
+            individuals = self.service.search_individuals(
                 name=name,
                 last_name=last_name,
                 email=email,
@@ -125,48 +125,48 @@ class PersonController:
                 additional_filters=additional_filters
             )
 
-            return [self._to_person_response(person) for person in persons]
+            return [self._to_individual_response(individual) for individual in individuals]
 
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def get_person(self, person_id: int) -> Dict[str, Any]:
+    def get_individual(self, individual_id: int) -> Dict[str, Any]:
         """
-        Obtener persona específica - Compatibilidad con GET /persons/{person_id}
+        Obtener individuo específico - Compatibilidad con GET /individuals/{individual_id}
         """
         try:
-            person = self.service.get_person_by_id(person_id)
-            return self._to_person_response(person)
+            individual = self.service.get_individual_by_id(individual_id)
+            return self._to_individual_response(individual)
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def update_person(
+    def update_individual(
         self,
-        person_id: int,
+        individual_id: int,
         update_data: Dict[str, Any],
         current_user_id: int
     ) -> Dict[str, Any]:
         """
-        Actualizar persona - Compatibilidad con PUT /persons/{person_id}
+        Actualizar individuo - Compatibilidad con PUT /individuals/{individual_id}
         """
         try:
-            person = self.service.update_person_legacy(
-                person_id, update_data, current_user_id
+            individual = self.service.update_individual_legacy(
+                individual_id, update_data, current_user_id
             )
             return {
-                "id": person.id,
-                "name": person.first_name,
-                "last_name": person.last_name,
-                "email": person.email
+                "id": individual.id,
+                "name": individual.first_name,
+                "last_name": individual.last_name,
+                "email": individual.email
             }
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except EntityAlreadyExistsError as e:
             raise HTTPException(status_code=400, detail=e.message)
         except BaseAppException as e:
@@ -174,26 +174,26 @@ class PersonController:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def delete_person(self, person_id: int, current_user_id: int) -> Dict[str, str]:
+    def delete_individual(self, individual_id: int, current_user_id: int) -> Dict[str, str]:
         """
-        Eliminar persona (soft delete) - Compatibilidad con DELETE /persons/{person_id}
+        Eliminar individuo (soft delete) - Compatibilidad con DELETE /individuals/{individual_id}
         """
         try:
-            self.service.delete_person(person_id, current_user_id)
-            return {"message": "Persona eliminada correctamente"}
+            self.service.delete_individual(individual_id, current_user_id)
+            return {"message": "Individuo eliminado correctamente"}
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def create_person_with_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_individual_with_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Crear persona con usuario - Compatibilidad con POST /persons/with-user
+        Crear individuo con usuario - Compatibilidad con POST /individuals/with-user
         """
         try:
-            # Separar datos de usuario y persona
+            # Separar datos de usuario y individuo
             user_data = {
                 'user_email': data.get('user_email'),
                 'user_name': data.get('user_name'),
@@ -201,7 +201,7 @@ class PersonController:
                 'user_role': data.get('user_role', 4)
             }
 
-            person_data = {
+            individual_data = {
                 'name': data.get('name'),  # Formato legacy
                 'last_name': data.get('last_name'),
                 'email': data.get('email'),
@@ -210,20 +210,20 @@ class PersonController:
                 'status': data.get('status', 'active')
             }
 
-            user_result, person_result = self.service.create_person_with_user(
-                user_data, person_data
+            user_result, individual_result = self.service.create_individual_with_user(
+                user_data, individual_data
             )
 
             return {
                 "user": user_result,
-                "person": person_result
+                "individual": individual_result
             }
 
         except EntityAlreadyExistsError as e:
             if "User" in e.message:
                 raise HTTPException(status_code=400, detail="Email de usuario ya existe")
             else:
-                raise HTTPException(status_code=400, detail="Email de persona ya existe")
+                raise HTTPException(status_code=400, detail="Email de individuo ya existe")
         except EntityValidationError as e:
             # Incluir los detalles de validación en la respuesta
             raise HTTPException(
@@ -236,17 +236,17 @@ class PersonController:
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error creando usuario y persona: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error creando usuario y individuo: {str(e)}")
 
     # ==================== NUEVOS ENDPOINTS EXTENDIDOS ====================
 
-    def create_person_extended(self, person_data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_individual_extended(self, individual_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Crear persona con funcionalidades extendidas del nuevo modelo.
+        Crear individuo con funcionalidades extendidas del nuevo modelo.
         """
         try:
-            person = self.service.create_person_extended(person_data)
-            return self._to_extended_response(person)
+            individual = self.service.create_individual_extended(individual_data)
+            return self._to_extended_response(individual)
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
@@ -254,13 +254,13 @@ class PersonController:
 
     def find_by_document(self, document_number: str) -> Dict[str, Any]:
         """
-        Buscar persona por número de documento.
+        Buscar individuo por número de documento.
         """
         try:
-            person = self.service.find_by_document(document_number)
-            if not person:
-                raise HTTPException(status_code=404, detail="Persona no encontrada")
-            return self._to_extended_response(person)
+            individual = self.service.find_by_document(document_number)
+            if not individual:
+                raise HTTPException(status_code=404, detail="Individuo no encontrado")
+            return self._to_extended_response(individual)
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
@@ -268,11 +268,11 @@ class PersonController:
 
     def find_by_phone(self, phone: str) -> List[Dict[str, Any]]:
         """
-        Buscar personas por número de teléfono.
+        Buscar individuos por número de teléfono.
         """
         try:
-            persons = self.service.find_by_phone_number(phone)
-            return [self._to_extended_response(person) for person in persons]
+            individuals = self.service.find_by_phone_number(phone)
+            return [self._to_extended_response(individual) for individual in individuals]
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
@@ -280,12 +280,12 @@ class PersonController:
 
     def get_by_status(self, status: str) -> List[Dict[str, Any]]:
         """
-        Obtener personas por status usando enum.
+        Obtener individuos por status usando enum.
         """
         try:
-            status_enum = PersonStatusEnum(status)
-            persons = self.service.get_persons_by_status(status_enum)
-            return [self._to_extended_response(person) for person in persons]
+            status_enum = IndividualStatusEnum(status)
+            individuals = self.service.get_individuals_by_status(status_enum)
+            return [self._to_extended_response(individual) for individual in individuals]
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Status inválido: {status}")
         except BaseAppException as e:
@@ -293,30 +293,30 @@ class PersonController:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def get_verified_persons(self) -> List[Dict[str, Any]]:
+    def get_verified_individuals(self) -> List[Dict[str, Any]]:
         """
-        Obtener personas verificadas.
+        Obtener individuos verificados.
         """
         try:
-            persons = self.service.get_verified_persons()
-            return [self._to_extended_response(person) for person in persons]
+            individuals = self.service.get_verified_individuals()
+            return [self._to_extended_response(individual) for individual in individuals]
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def verify_person(self, person_id: int, current_user_id: int) -> Dict[str, Any]:
+    def verify_individual(self, individual_id: int, current_user_id: int) -> Dict[str, Any]:
         """
-        Verificar persona.
+        Verificar individuo.
         """
         try:
-            person = self.service.verify_person(person_id, current_user_id)
+            individual = self.service.verify_individual(individual_id, current_user_id)
             return {
-                "message": "Persona verificada exitosamente",
-                "person": self._to_extended_response(person)
+                "message": "Individuo verificado exitosamente",
+                "individual": self._to_extended_response(individual)
             }
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BusinessRuleError as e:
             raise HTTPException(status_code=400, detail=e.message)
         except BaseAppException as e:
@@ -326,11 +326,11 @@ class PersonController:
 
     def search_by_skills(self, skill: str) -> List[Dict[str, Any]]:
         """
-        Buscar personas por habilidad.
+        Buscar individuos por habilidad.
         """
         try:
-            persons = self.service.search_by_skills(skill)
-            return [self._to_extended_response(person) for person in persons]
+            individuals = self.service.search_by_skills(skill)
+            return [self._to_extended_response(individual) for individual in individuals]
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
@@ -338,20 +338,20 @@ class PersonController:
 
     # ==================== CONTROLADORES AVANZADOS DE SKILLS ====================
 
-    def add_skill_to_person(
+    def add_skill_to_individual(
         self,
-        person_id: int,
+        individual_id: int,
         skill_data: Dict[str, Any],
         current_user_id: int
     ) -> Dict[str, Any]:
         """
-        Añadir skill detallada a persona.
+        Añadir skill detallada a individuo.
         """
         try:
             self._validate_request_data(skill_data, ["name", "category", "level"])
 
-            person = self.service.add_skill_to_person(
-                person_id=person_id,
+            individual = self.service.add_skill_to_individual(
+                individual_id=individual_id,
                 skill_name=skill_data["name"],
                 category=skill_data["category"],
                 level=skill_data["level"],
@@ -362,17 +362,17 @@ class PersonController:
 
             return {
                 "message": "Skill añadida exitosamente",
-                "person_id": person_id,
+                "individual_id": individual_id,
                 "skill_added": {
                     "name": skill_data["name"],
                     "category": skill_data["category"],
                     "level": skill_data["level"]
                 },
-                "skills_summary": person.get_skills_summary()
+                "skills_summary": individual.get_skills_summary()
             }
 
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BusinessRuleError as e:
             raise HTTPException(status_code=400, detail=e.message)
         except BaseAppException as e:
@@ -380,31 +380,31 @@ class PersonController:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def remove_skill_from_person(
+    def remove_skill_from_individual(
         self,
-        person_id: int,
+        individual_id: int,
         skill_name: str,
         current_user_id: int
     ) -> Dict[str, Any]:
         """
-        Eliminar skill de persona.
+        Eliminar skill de individuo.
         """
         try:
-            person = self.service.remove_skill_from_person(
-                person_id=person_id,
+            individual = self.service.remove_skill_from_individual(
+                individual_id=individual_id,
                 skill_name=skill_name,
                 updated_by=current_user_id
             )
 
             return {
                 "message": "Skill eliminada exitosamente",
-                "person_id": person_id,
+                "individual_id": individual_id,
                 "skill_removed": skill_name,
-                "skills_summary": person.get_skills_summary()
+                "skills_summary": individual.get_skills_summary()
             }
 
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BusinessRuleError as e:
             raise HTTPException(status_code=400, detail=e.message)
         except BaseAppException as e:
@@ -414,11 +414,11 @@ class PersonController:
 
     def search_by_skill_category(self, category: str) -> List[Dict[str, Any]]:
         """
-        Buscar personas por categoría de skill.
+        Buscar individuos por categoría de skill.
         """
         try:
-            persons = self.service.search_by_skill_category(category)
-            return [self._to_extended_response(person) for person in persons]
+            individuals = self.service.search_by_skill_category(category)
+            return [self._to_extended_response(individual) for individual in individuals]
         except BusinessRuleError as e:
             raise HTTPException(status_code=400, detail=e.message)
         except BaseAppException as e:
@@ -428,11 +428,11 @@ class PersonController:
 
     def search_by_skill_level(self, skill_name: str, level: str) -> List[Dict[str, Any]]:
         """
-        Buscar personas con skill específica en nivel mínimo.
+        Buscar individuos con skill específica en nivel mínimo.
         """
         try:
-            persons = self.service.search_by_skill_level(skill_name, level)
-            return [self._to_extended_response(person) for person in persons]
+            individuals = self.service.search_by_skill_level(skill_name, level)
+            return [self._to_extended_response(individual) for individual in individuals]
         except BusinessRuleError as e:
             raise HTTPException(status_code=400, detail=e.message)
         except BaseAppException as e:
@@ -440,13 +440,13 @@ class PersonController:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def get_persons_with_expert_skills(self) -> List[Dict[str, Any]]:
+    def get_individuals_with_expert_skills(self) -> List[Dict[str, Any]]:
         """
-        Obtener personas con skills de nivel experto.
+        Obtener individuos con skills de nivel experto.
         """
         try:
-            persons = self.service.get_persons_with_expert_skills()
-            return [self._to_extended_response(person) for person in persons]
+            individuals = self.service.get_individuals_with_expert_skills()
+            return [self._to_extended_response(individual) for individual in individuals]
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
@@ -454,11 +454,11 @@ class PersonController:
 
     def search_by_skill_and_experience(self, skill_name: str, min_years: int) -> List[Dict[str, Any]]:
         """
-        Buscar personas con skill y años mínimos de experiencia.
+        Buscar individuos con skill y años mínimos de experiencia.
         """
         try:
-            persons = self.service.search_by_skill_and_experience(skill_name, min_years)
-            return [self._to_extended_response(person) for person in persons]
+            individuals = self.service.search_by_skill_and_experience(skill_name, min_years)
+            return [self._to_extended_response(individual) for individual in individuals]
         except BusinessRuleError as e:
             raise HTTPException(status_code=400, detail=e.message)
         except BaseAppException as e:
@@ -466,36 +466,36 @@ class PersonController:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def get_person_skills_summary(self, person_id: int) -> Dict[str, Any]:
+    def get_individual_skills_summary(self, individual_id: int) -> Dict[str, Any]:
         """
-        Obtener resumen de skills de persona.
+        Obtener resumen de skills de individuo.
         """
         try:
-            summary = self.service.get_person_skills_summary(person_id)
+            summary = self.service.get_individual_skills_summary(individual_id)
             return {
-                "person_id": person_id,
+                "individual_id": individual_id,
                 "skills_summary": summary
             }
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def get_person_skills_by_category(self, person_id: int, category: str) -> Dict[str, Any]:
+    def get_individual_skills_by_category(self, individual_id: int, category: str) -> Dict[str, Any]:
         """
-        Obtener skills de persona por categoría.
+        Obtener skills de individuo por categoría.
         """
         try:
-            skills = self.service.get_person_skills_by_category(person_id, category)
+            skills = self.service.get_individual_skills_by_category(individual_id, category)
             return {
-                "person_id": person_id,
+                "individual_id": individual_id,
                 "category": category,
                 "skills": skills
             }
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BusinessRuleError as e:
             raise HTTPException(status_code=400, detail=e.message)
         except BaseAppException as e:
@@ -503,30 +503,30 @@ class PersonController:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def get_person_expert_skills(self, person_id: int) -> Dict[str, Any]:
+    def get_individual_expert_skills(self, individual_id: int) -> Dict[str, Any]:
         """
-        Obtener skills de nivel experto de persona.
+        Obtener skills de nivel experto de individuo.
         """
         try:
-            expert_skills = self.service.get_person_expert_skills(person_id)
+            expert_skills = self.service.get_individual_expert_skills(individual_id)
             return {
-                "person_id": person_id,
+                "individual_id": individual_id,
                 "expert_skills": expert_skills
             }
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def validate_person_skill_requirements(
+    def validate_individual_skill_requirements(
         self,
-        person_id: int,
+        individual_id: int,
         requirements: List[Dict[str, str]]
     ) -> Dict[str, Any]:
         """
-        Validar si persona cumple requisitos de skills.
+        Validar si individuo cumple requisitos de skills.
         """
         try:
             # Validar formato de requisitos
@@ -537,13 +537,13 @@ class PersonController:
                         detail="Cada requisito debe tener 'name' y 'level'"
                     )
 
-            validation_result = self.service.validate_person_skill_requirements(
-                person_id, requirements
+            validation_result = self.service.validate_individual_skill_requirements(
+                individual_id, requirements
             )
             return validation_result
 
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
@@ -551,7 +551,7 @@ class PersonController:
 
     def update_skill_level(
         self,
-        person_id: int,
+        individual_id: int,
         skill_name: str,
         update_data: Dict[str, Any],
         current_user_id: int
@@ -562,8 +562,8 @@ class PersonController:
         try:
             self._validate_request_data(update_data, ["level"])
 
-            person = self.service.update_skill_level(
-                person_id=person_id,
+            individual = self.service.update_skill_level(
+                individual_id=individual_id,
                 skill_name=skill_name,
                 new_level=update_data["level"],
                 years_experience=update_data.get("years_experience"),
@@ -573,14 +573,14 @@ class PersonController:
 
             return {
                 "message": "Nivel de skill actualizado exitosamente",
-                "person_id": person_id,
+                "individual_id": individual_id,
                 "skill_name": skill_name,
                 "new_level": update_data["level"],
-                "skill_detail": person.get_skill_detail(skill_name)
+                "skill_detail": individual.get_skill_detail(skill_name)
             }
 
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrada")
         except BusinessRuleError as e:
             raise HTTPException(status_code=400, detail=e.message)
         except BaseAppException as e:
@@ -601,56 +601,56 @@ class PersonController:
 
     def get_statistics(self) -> Dict[str, Any]:
         """
-        Obtener estadísticas de personas.
+        Obtener estadísticas de individuos.
         """
         try:
-            return self.service.get_person_statistics()
+            return self.service.get_individual_statistics()
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def get_person_age(self, person_id: int) -> Dict[str, Any]:
+    def get_individual_age(self, individual_id: int) -> Dict[str, Any]:
         """
-        Calcular edad de persona.
+        Calcular edad de individuo.
         """
         try:
-            age = self.service.calculate_person_age(person_id)
-            return {"person_id": person_id, "age": age}
+            age = self.service.calculate_individual_age(individual_id)
+            return {"individual_id": individual_id, "age": age}
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def get_person_bmi(self, person_id: int) -> Dict[str, Any]:
+    def get_individual_bmi(self, individual_id: int) -> Dict[str, Any]:
         """
-        Calcular BMI de persona.
+        Calcular BMI de individuo.
         """
         try:
-            bmi = self.service.get_person_bmi(person_id)
-            return {"person_id": person_id, "bmi": bmi}
+            bmi = self.service.get_individual_bmi(individual_id)
+            return {"individual_id": individual_id, "bmi": bmi}
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-    def validate_person_consistency(self, person_id: int) -> Dict[str, Any]:
+    def validate_individual_consistency(self, individual_id: int) -> Dict[str, Any]:
         """
-        Validar consistencia de datos de persona.
+        Validar consistencia de datos de individuo.
         """
         try:
-            errors = self.service.validate_person_consistency(person_id)
+            errors = self.service.validate_individual_consistency(individual_id)
             return {
-                "person_id": person_id,
+                "individual_id": individual_id,
                 "is_consistent": len(errors) == 0,
                 "validation_errors": errors
             }
         except EntityNotFoundError:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="Individuo no encontrado")
         except BaseAppException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
         except Exception as e:
@@ -658,89 +658,89 @@ class PersonController:
 
     # ==================== MÉTODOS PRIVADOS DE TRANSFORMACIÓN ====================
 
-    def _to_person_response(self, person: Person) -> Dict[str, Any]:
+    def _to_individual_response(self, individual: Individual) -> Dict[str, Any]:
         """
-        Convierte Person a formato PersonResponse para compatibilidad.
+        Convierte Individual a formato IndividualResponse para compatibilidad.
         """
         return {
-            "id": person.id,
-            "user_id": person.user_id,
-            "name": person.first_name,  # Mapeo para compatibilidad
-            "last_name": person.last_name,
-            "email": person.email,
-            "phone": person.primary_phone,  # Primer teléfono del array
-            "address": person.address_street,  # Dirección principal
-            "status": person.status.value if person.status else "active",
-            "is_active": person.is_active,
-            "created_at": person.created_at,
-            "updated_at": person.updated_at,
+            "id": individual.id,
+            "user_id": individual.user_id,
+            "name": individual.first_name,  # Mapeo para compatibilidad
+            "last_name": individual.last_name,
+            "email": individual.email,
+            "phone": individual.primary_phone,  # Primer teléfono del array
+            "address": individual.address_street,  # Dirección principal
+            "status": individual.status.value if individual.status else "active",
+            "is_active": individual.is_active,
+            "created_at": individual.created_at,
+            "updated_at": individual.updated_at,
             "country": {
-                "id": person.country.id,
-                "name": person.country.name,
-                "code": person.country.iso_code_3
-            } if person.country else None,
+                "id": individual.country.id,
+                "name": individual.country.name,
+                "code": individual.country.iso_code_3
+            } if individual.country else None,
             "state": {
-                "id": person.state.id,
-                "name": person.state.name,
-                "code": person.state.code
-            } if person.state else None
+                "id": individual.state.id,
+                "name": individual.state.name,
+                "code": individual.state.code
+            } if individual.state else None
         }
 
-    def _to_extended_response(self, person: Person) -> Dict[str, Any]:
+    def _to_extended_response(self, individual: Individual) -> Dict[str, Any]:
         """
-        Convierte Person a formato extendido con todas las propiedades.
+        Convierte Individual a formato extendido con todas las propiedades.
         """
         return {
-            "id": person.id,
-            "user_id": person.user_id,
-            "first_name": person.first_name,
-            "last_name": person.last_name,
-            "full_name": person.full_name,
-            "email": person.email,
-            "document_type": person.document_type.value if person.document_type else None,
-            "document_number": person.document_number,
-            "phone_numbers": person.phone_numbers,
-            "primary_phone": person.primary_phone,
+            "id": individual.id,
+            "user_id": individual.user_id,
+            "first_name": individual.first_name,
+            "last_name": individual.last_name,
+            "full_name": individual.full_name,
+            "email": individual.email,
+            "document_type": individual.document_type.value if individual.document_type else None,
+            "document_number": individual.document_number,
+            "phone_numbers": individual.phone_numbers,
+            "primary_phone": individual.primary_phone,
             "address": {
-                "street": person.address_street,
-                "city": person.address_city,
-                "state": person.address_state
+                "street": individual.address_street,
+                "city": individual.address_city,
+                "state": individual.address_state
             },
             "birth_info": {
-                "birth_date": person.birth_date,
-                "age": person.calculated_age,
-                "birth_city": person.birth_city,
-                "birth_state": person.birth_state,
-                "birth_country": person.birth_country
+                "birth_date": individual.birth_date,
+                "age": individual.calculated_age,
+                "birth_city": individual.birth_city,
+                "birth_state": individual.birth_state,
+                "birth_country": individual.birth_country
             },
             "physical_info": {
-                "height": float(person.height) if person.height else None,
-                "weight": float(person.weight) if person.weight else None,
-                "bmi": person.bmi
+                "height": float(individual.height) if individual.height else None,
+                "weight": float(individual.weight) if individual.weight else None,
+                "bmi": individual.bmi
             },
             "status_info": {
-                "status": person.status.value if person.status else None,
-                "is_active": person.is_active,
-                "is_verified": person.is_verified,
-                "is_deleted": person.is_deleted
+                "status": individual.status.value if individual.status else None,
+                "is_active": individual.is_active,
+                "is_verified": individual.is_verified,
+                "is_deleted": individual.is_deleted
             },
-            "personal_info": {
-                "gender": person.gender.value if person.gender else None,
-                "marital_status": person.marital_status.value if person.marital_status else None,
-                "education_level": person.education_level.value if person.education_level else None,
-                "employment_status": person.employment_status.value if person.employment_status else None
+            "individuol_info": {
+                "gender": individual.gender.value if individual.gender else None,
+                "marital_status": individual.marital_status.value if individual.marital_status else None,
+                "education_level": individual.education_level.value if individual.education_level else None,
+                "employment_status": individual.employment_status.value if individual.employment_status else None
             },
-            "skills": person.skills,
-            "languages": person.languages,
-            "preferences": person.preferences,
-            "additional_data": person.additional_data,
+            "skills": individual.skills,
+            "languages": individual.languages,
+            "preferences": individual.preferences,
+            "additional_data": individual.additional_data,
             "audit_info": {
-                "created_at": person.created_at,
-                "updated_at": person.updated_at,
-                "deleted_at": person.deleted_at,
-                "created_by": person.created_by,
-                "updated_by": person.updated_by,
-                "deleted_by": person.deleted_by
+                "created_at": individual.created_at,
+                "updated_at": individual.updated_at,
+                "deleted_at": individual.deleted_at,
+                "created_by": individual.created_by,
+                "updated_by": individual.updated_by,
+                "deleted_by": individual.deleted_by
             }
         }
 

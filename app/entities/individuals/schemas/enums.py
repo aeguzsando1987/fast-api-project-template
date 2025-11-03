@@ -1,8 +1,8 @@
 """
-Enums para la entidad Person
+Enums para la entidad Individual
 
 Este módulo define los valores permitidos para campos categóricos
-de la entidad Person, demostrando el uso de Enums en SQLAlchemy y Pydantic.
+de la entidad Individual, demostrando el uso de Enums en SQLAlchemy y Pydantic.
 
 🔧 INSTRUCCIONES PARA AGREGAR NUEVOS VALORES:
 
@@ -23,7 +23,7 @@ de la entidad Person, demostrando el uso de Enums en SQLAlchemy y Pydantic.
    - Heredar de (str, Enum) para compatibilidad con JSON
    - Usar UPPER_CASE para los nombres de valores
    - Crear diccionario de display names correspondiente
-   - Actualizar el modelo Person si es necesario
+   - Actualizar el modelo Individual si es necesario
 
 ⚠️ IMPORTANTE: Al agregar valores a enums existentes, asegúrate de:
 - No cambiar valores existentes (puede romper datos)
@@ -45,12 +45,12 @@ class DocumentTypeEnum(str, Enum):
         document_type: DocumentTypeEnum = DocumentTypeEnum.RFC
 
         # En API endpoint:
-        @app.get("/persons/{doc_type}")
+        @app.get("/individuals/{doc_type}")
         def get_by_doc_type(doc_type: DocumentTypeEnum):
             return f"Buscando por {doc_type.value}"
 
         # En base de datos:
-        person.document_type = DocumentTypeEnum.CURP
+        individual.document_type = DocumentTypeEnum.CURP
 
         # Validar valor:
         if doc_type == DocumentTypeEnum.RFC:
@@ -70,14 +70,14 @@ class GenderEnum(str, Enum):
     Seguimos estándares internacionales de inclusión.
 
     Ejemplos de uso:
-        # En modelo Person:
-        person.gender = GenderEnum.MALE
+        # En modelo Individual:
+        individual.gender = GenderEnum.MALE
 
         # En Pydantic schema:
         gender: Optional[GenderEnum] = None
 
         # En query de base de datos:
-        males = db.query(Person).filter(Person.gender == GenderEnum.MALE).all()
+        males = db.query(Individual).filter(Individual.gender == GenderEnum.MALE).all()
 
         # Obtener display name:
         display = get_display_name(GenderEnum.MALE, GENDER_DISPLAY_NAMES)
@@ -103,30 +103,30 @@ class MaritalStatusEnum(str, Enum):
     OTHER = "OTHER"                # Otro
 
 
-class PersonStatusEnum(str, Enum):
+class IndividualStatusEnum(str, Enum):
     """
-    Estados de una persona en el sistema.
+    Estados de un individuo en el sistema.
 
-    Permite categorizar personas según su situación actual.
+    Permite categorizar individuos según su situación actual.
 
     Ejemplos de uso:
-        # Filtrar personas activas:
-        active_persons = db.query(Person).filter(
-            Person.status == PersonStatusEnum.ACTIVE
+        # Filtrar individuos activos:
+        active_individuals = db.query(Individual).filter(
+            Individual.status == IndividualStatusEnum.ACTIVE
         ).all()
 
         # Validar transición de estado:
-        if current_status == PersonStatusEnum.PENDING_VERIFICATION:
-            person.status = PersonStatusEnum.ACTIVE
+        if current_status == IndividualStatusEnum.PENDING_VERIFICATION:
+            individual.status = IndividualStatusEnum.ACTIVE
 
         # En endpoint con query parameter:
-        @app.get("/persons")
-        def list_persons(status: Optional[PersonStatusEnum] = None):
+        @app.get("/individuals")
+        def list_individuals(status: Optional[IndividualStatusEnum] = None):
             # Si status es None, muestra todos
             # Si es ACTIVE, solo muestra activos
 
         # Valores por defecto:
-        person.status = PersonStatusEnum.ACTIVE  # Default para nuevas personas
+        individual.status = IndividualStatusEnum.ACTIVE  # Default para nuevos individuos
     """
     ACTIVE = "ACTIVE"              # Activo en el sistema
     INACTIVE = "INACTIVE"          # Inactivo temporalmente

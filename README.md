@@ -9,7 +9,7 @@
 - **BaseRepository Genérico** con TypeVar[T] reutilizable en todas las entidades
 - **Configuración Híbrida** - config.toml (público) + .env (secretos)
 - **3 Entidades Base Completas**:
-  - **Person** - Ejemplo completo con 40+ campos, skills JSONB, validaciones
+  - **Individual** - Ejemplo completo con 40+ campos, skills JSONB, validaciones
   - **Country** - Países con códigos ISO 3166 (3 países precargados)
   - **State** - Estados/Provincias/Departamentos (114 precargados)
 - **Soft Delete** y campos de auditoría en todas las entidades
@@ -104,7 +104,7 @@ En la carpeta [webapp_demo/](../webapp_demo/) encontrarás aplicaciones web func
 
 ### Vanilla JS Demo (95% Completo)
 - Login con JWT y manejo de roles
-- CRUD completo de Personas con modales
+- CRUD completo de Individuos con modales
 - Dual View Mode (Dashboard cards y Tabla)
 - Sistema de skills (backend listo)
 - 10 bugs corregidos durante desarrollo
@@ -130,21 +130,15 @@ Ver [webapp_demo/README.md](../webapp_demo/README.md) para instrucciones de uso.
 2. **[ADDING_ENTITIES.md](ADDING_ENTITIES.md)** - Guía paso a paso
    - Cómo agregar nuevas entidades al proyecto
    - Estructura de archivos necesarios
-   - Ejemplos con Person, Country, State
+   - Ejemplos con Individual, Country, State
    - Checklist de implementación
-
-3. **[CLAUDE.md](CLAUDE.md)** - Estado del proyecto
-   - Progreso actual y entidades implementadas
-   - Problemas resueltos y soluciones
-   - Comandos útiles
-   - Próximos pasos
 
 ### Arquitectura del Proyecto
 
 ```
 app/
 ├── entities/              # Entidades del negocio
-│   ├── persons/          # Ejemplo completo (40+ campos)
+│   ├── individuals/       # Ejemplo completo (40+ campos)
 │   ├── countries/        # Países con ISO codes
 │   ├── states/           # Estados por país
 │   └── users/            # Usuarios del sistema
@@ -157,7 +151,7 @@ app/
 │   └── data/                      # Datos precargados
 │
 └── tests/                # Tests unitarios
-    ├── test_persons/
+    ├── test_individuals/
     └── test_users/
 ```
 
@@ -196,7 +190,7 @@ app/
 - `PUT /users/{id}` - Actualizar usuario
 - `DELETE /users/{id}` - Eliminar usuario
 
-### Persons (Ejemplo completo)
+### Individuals (Ejemplo completo)
 - 25+ endpoints con CRUD, skills, búsquedas, cálculos
 
 ### Countries & States
@@ -294,8 +288,7 @@ mi-proyecto/
 ├── requirements.txt          # Dependencias
 ├── README.md                 # Este archivo
 ├── PATRON_DESARROLLO.md      # Guía de desarrollo
-├── ADDING_ENTITIES.md        # Cómo agregar entidades
-└── CLAUDE.md                 # Estado del proyecto
+└── ADDING_ENTITIES.md        # Cómo agregar entidades
 ```
 
 ---
@@ -360,6 +353,12 @@ Al iniciar el servidor por primera vez, se cargan automáticamente:
 - **¿Cómo agregar una entidad?** → Ver [PATRON_DESARROLLO.md](PATRON_DESARROLLO.md)
 - **¿Cómo funciona la arquitectura?** → Ver [ADDING_ENTITIES.md](ADDING_ENTITIES.md)
 - **¿Problemas con la instalación?** → Revisar logs en consola
+
+---
+
+## Autor
+
+**Eric Guzman**
 
 ---
 

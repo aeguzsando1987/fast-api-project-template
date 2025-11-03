@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
 from database import get_db, create_tables, User, ExampleEntity
-# COMENTADO TEMPORALMENTE: Conflicto con nuevo modelo Person
+# COMENTADO TEMPORALMENTE: Conflicto con nuevo modelo Individual
 # from modules.persons.models import Person
 from auth import hash_password, verify_password, create_access_token, verify_token, get_current_user_id, get_current_user, require_admin, require_manager_or_admin, require_collaborator_or_better, require_any_user
 import os
@@ -18,7 +18,7 @@ load_dotenv()
 # COMENTADO TEMPORALMENTE: Para probar nueva arquitectura sin conflictos
 # from modules.persons import router as persons_router
 # Importar nueva arquitectura
-from app.entities.persons.routers.person_router import router as new_persons_router
+from app.entities.individuals.routers.individual_router import router as new_individuals_router
 from app.entities.countries.routers.country_router import router as country_router
 from app.entities.states.routers.state_router import router as state_router
 
@@ -30,7 +30,7 @@ app = FastAPI(
         {"name": "auth", "description": "Operaciones de autenticación"},
         {"name": "users", "description": "Gestión de usuarios"},
         {"name": "examples", "description": "Entidades de ejemplo"},
-        {"name": "Persons", "description": "Gestión de personas"},
+        {"name": "Individuals", "description": "Gestión de individuos"},
         {"name": "Countries", "description": "Gestión de paises"},
         {"name": "States", "description": "Gestión de estados/provincias"},
         {"name": "health", "description": "Estado del sistema"}
@@ -57,8 +57,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # Incluir routers de módulos
 # COMENTADO TEMPORALMENTE: Para probar nueva arquitectura sin conflictos
 # app.include_router(persons_router)
-# Incluir nueva arquitectura de personas (ahora en el path principal /persons)
-app.include_router(new_persons_router)
+# Incluir nueva arquitectura de individuos (ahora en el path principal /individuals)
+app.include_router(new_individuals_router)
 # Incluir routers de entidades base
 app.include_router(country_router)
 app.include_router(state_router)

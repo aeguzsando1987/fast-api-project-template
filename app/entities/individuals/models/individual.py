@@ -1,5 +1,5 @@
 """
-Modelo Person - Ejemplo completo de todos los tipos de datos en SQLAlchemy
+Modelo Individual - Ejemplo completo de todos los tipos de datos en SQLAlchemy
 
 Este modelo demuestra el uso de TODOS los tipos de datos disponibles en PostgreSQL
 y SQLAlchemy, sirviendo como referencia educativa para futuras entidades.
@@ -29,30 +29,30 @@ from decimal import Decimal as PythonDecimal
 
 # Importar base de datos y enums
 from database import Base
-from app.entities.persons.schemas.enums import (
+from app.entities.individuals.schemas.enums import (
     DocumentTypeEnum, GenderEnum, MaritalStatusEnum,
-    PersonStatusEnum, ContactPreferenceEnum, EducationLevelEnum,
+    IndividualStatusEnum, ContactPreferenceEnum, EducationLevelEnum,
     EmploymentStatusEnum
 )
 
 
-class Person(Base):
+class Individual(Base):
     """
-    Modelo Person - Demostración completa de tipos de datos.
+    Modelo Individual - Demostración completa de tipos de datos.
 
     Esta entidad ejemplifica cómo manejar diferentes tipos de datos
     en una aplicación real, incluyendo validaciones, relaciones,
     y estructuras complejas como JSON y Arrays.
 
     Relaciones:
-    - 1:1 opcional con User (para personas que tienen cuenta)
+    - 1:1 opcional con User (para individuos que tienen cuenta)
     - N:1 con Department (departamento de trabajo)
     """
-    __tablename__ = "persons"
+    __tablename__ = "individuals"
 
     # ==================== CAMPOS PRIMARIOS ====================
 
-    id = Column(Integer, primary_key=True, index=True, comment="ID único de la persona")
+    id = Column(Integer, primary_key=True, index=True, comment="ID único del individuo")
 
     # Relación opcional con Usuario (para personas que tienen cuenta en el sistema)
     user_id = Column(
@@ -70,14 +70,14 @@ class Person(Base):
         String(100),
         nullable=False,
         index=True,
-        comment="Nombre(s) de la persona"
+        comment="Nombre(s) del individuo"
     )
 
     last_name = Column(
         String(100),
         nullable=False,
         index=True,
-        comment="Apellido(s) de la persona"
+        comment="Apellido(s) del individuo"
     )
 
     # Email único opcional (para contacto)
@@ -259,7 +259,7 @@ class Person(Base):
     gender = Column(
         SQLEnum(GenderEnum),
         nullable=True,
-        comment="Género de la persona"
+        comment="Género del individuo"
     )
 
     # Estado civil
@@ -271,10 +271,10 @@ class Person(Base):
 
     # Estado en el sistema
     status = Column(
-        SQLEnum(PersonStatusEnum),
-        default=PersonStatusEnum.ACTIVE,
+        SQLEnum(IndividualStatusEnum),
+        default=IndividualStatusEnum.ACTIVE,
         nullable=False,
-        comment="Estado de la persona en el sistema"
+        comment="Estado del individuo en el sistema"
     )
 
     # Preferencia de contacto
@@ -353,7 +353,7 @@ class Person(Base):
         ARRAY(String(30)),
         nullable=True,
         default=[],
-        comment="Idiomas que habla la persona"
+        comment="Idiomas que habla el individuo"
     )
 
     # Skills detalladas (JSONB para información estructurada)
@@ -396,7 +396,7 @@ class Person(Base):
         Boolean,
         default=True,
         nullable=False,
-        comment="Para activar/desactivar la persona"
+        comment="Para activar/desactivar el individuo"
     )
 
     is_deleted = Column(
@@ -481,7 +481,7 @@ class Person(Base):
 
     @property
     def full_name(self) -> str:
-        """Nombre completo de la persona."""
+        """Nombre completo del individuo."""
         return f"{self.first_name} {self.last_name}"
 
     @property
@@ -550,7 +550,7 @@ class Person(Base):
             include_sensitive: Si incluir datos sensibles
 
         Returns:
-            Diccionario con los datos de la persona
+            Diccionario con los datos del individuo
         """
         data = {
             "id": self.id,
@@ -575,7 +575,7 @@ class Person(Base):
     # ==================== MÉTODOS DE SKILLS ====================
 
     def add_skill_detail(self, skill_name: str, category: str, level: str, years_experience: int = 0, notes: str = None):
-        """Añadir skill detallada a la persona."""
+        """Añadir skill detallada al individuo."""
         # Añadir al array simple si no existe
         if self.skills is None:
             self.skills = []
@@ -600,7 +600,7 @@ class Person(Base):
         flag_modified(self, 'skill_details')  # Forzar detección de cambio
 
     def remove_skill(self, skill_name: str):
-        """Eliminar skill de la persona."""
+        """Eliminar skill del individuo."""
         # Remover del array simple
         if self.skills and skill_name in self.skills:
             self.skills.remove(skill_name)
@@ -692,7 +692,7 @@ class Person(Base):
         return None
 
     def __repr__(self):
-        return f"<Person(id={self.id}, name='{self.full_name}', email='{self.email}')>"
+        return f"<Individual(id={self.id}, name='{self.full_name}', email='{self.email}')>"
 
     def __str__(self):
         return self.full_name

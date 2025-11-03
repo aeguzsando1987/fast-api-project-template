@@ -1,5 +1,5 @@
 """
-Service Layer para Person
+Service Layer para Individual
 
 Contiene la lógica de negocio y coordina operaciones entre
 Repository y Controller, manteniendo compatibilidad con el
@@ -10,9 +10,9 @@ from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from app.entities.persons.repositories.person_repository import PersonRepository
-from app.entities.persons.models.person import Person
-from app.entities.persons.schemas.enums import PersonStatusEnum
+from app.entities.individuals.repositories.individual_repository import IndividualRepository
+from app.entities.individuals.models.individual import Individual
+from app.entities.individuals.schemas.enums import IndividualStatusEnum
 from app.entities.states.repositories.state_repository import StateRepository
 from app.shared.exceptions import (
     EntityNotFoundError,
@@ -30,9 +30,9 @@ from app.shared.validators import (
 )
 
 
-class PersonService:
+class IndividualService:
     """
-    Service para manejar lógica de negocio de Person.
+    Service para manejar lógica de negocio de Individual.
 
     Coordina operaciones entre Repository y Controllers,
     aplicando validaciones de negocio y manteniendo
@@ -41,7 +41,7 @@ class PersonService:
 
     def __init__(self, db: Session):
         self.db = db
-        self.repository = PersonRepository(db)
+        self.repository = IndividualRepository(db)
         self.state_repository = StateRepository(db)
 
     # ==================== VALIDACIONES GEOGRÁFICAS ====================
@@ -74,15 +74,15 @@ class PersonService:
 
     # ==================== MÉTODOS DE COMPATIBILIDAD ====================
 
-    def get_all_active_persons(self) -> List[Person]:
+    def get_all_active_individuals(self) -> List[Individual]:
         """
-        Obtiene todas las personas activas.
+        Obtiene todos los individuos activos.
 
-        Compatibilidad: GET /persons/
+        Compatibilidad: GET /individuals/
         """
-        return self.repository.get_active_persons()
+        return self.repository.get_active_individuals()
 
-    def search_persons(
+    def search_individuals(
         self,
         name: Optional[str] = None,
         last_name: Optional[str] = None,
@@ -96,11 +96,11 @@ class PersonService:
         order_by: str = "id",
         order_desc: bool = False,
         additional_filters: Optional[Dict[str, Any]] = None
-    ) -> List[Person]:
+    ) -> List[Individual]:
         """
         Búsqueda avanzada con filtros.
 
-        Compatibilidad: GET /persons/search
+        Compatibilidad: GET /individuals/search
         """
         # Validar parámetros de paginación
         if page < 1:
@@ -123,68 +123,68 @@ class PersonService:
             additional_filters=additional_filters
         )
 
-    def get_person_by_id(self, person_id: int) -> Person:
+    def get_individual_by_id(self, individual_id: int) -> Individual:
         """
-        Obtiene persona por ID.
+        Obtiene individuo por ID.
 
-        Compatibilidad: GET /persons/{person_id}
+        Compatibilidad: GET /individuals/{individual_id}
         """
-        person = self.repository.get_by_id(person_id)
-        if not person or not person.is_active:
-            raise EntityNotFoundError("Person", person_id)
-        return person
+        individual = self.repository.get_by_id(individual_id)
+        if not individual or not individual.is_active:
+            raise EntityNotFoundError("Individual", individual_id)
+        return individual
 
-    def create_person_legacy(self, person_data: Dict[str, Any]) -> Person:
+    def create_individual_legacy(self, individual_data: Dict[str, Any]) -> Individual:
         """
-        Crea persona manteniendo compatibilidad con formato legacy.
+        Crea individuo manteniendo compatibilidad con formato legacy.
 
-        Compatibilidad: POST /persons/
+        Compatibilidad: POST /individuals/
         """
         # Validaciones de negocio
-        self._validate_person_data(person_data)
+        self._validate_individual_data(individual_data)
 
         # Validar email único
-        if self.repository.find_by_email(person_data.get('email')):
-            raise EntityAlreadyExistsError("Person", "email", person_data.get('email'))
+        if self.repository.find_by_email(individual_data.get('email')):
+            raise EntityAlreadyExistsError("Individual", "email", individual_data.get('email'))
 
         # Validar user_id si se proporciona
-        if person_data.get('user_id'):
-            self._validate_user_exists(person_data['user_id'])
+        if individual_data.get('user_id'):
+            self._validate_user_exists(individual_data['user_id'])
 
         # Validar consistencia geografica (state pertenece a country)
         self._validate_state_country_consistency(
-            person_data.get('country_id'),
-            person_data.get('state_id')
+            individual_data.get('country_id'),
+            individual_data.get('state_id')
         )
 
-        return self.repository.create_person_compatible(person_data)
+        return self.repository.create_individual_compatible(individual_data)
 
-    def update_person_legacy(
+    def update_individual_legacy(
         self,
-        person_id: int,
+        individual_id: int,
         update_data: Dict[str, Any],
         updated_by: Optional[int] = None
-    ) -> Person:
+    ) -> Individual:
         """
-        Actualiza persona manteniendo compatibilidad.
+        Actualiza individuo manteniendo compatibilidad.
 
-        Compatibilidad: PUT /persons/{person_id}
+        Compatibilidad: PUT /individuals/{individual_id}
         """
-        # Verificar que la persona existe y está activa
-        person = self.get_person_by_id(person_id)
+        # Verificar que el individuo existe y está activo
+        individual = self.get_individual_by_id(individual_id)
 
         # Validar datos si se proporcionan
         if update_data:
-            self._validate_person_data(update_data, is_update=True)
+            self._validate_individual_data(update_data, is_update=True)
 
         # Validar email único si se está cambiando
-        if 'email' in update_data and update_data['email'] != person.email:
+        if 'email' in update_data and update_data['email'] != individual.email:
             if self.repository.find_by_email(update_data['email']):
-                raise EntityAlreadyExistsError("Person", "email", update_data['email'])
+                raise EntityAlreadyExistsError("Individual", "email", update_data['email'])
 
         # Validar consistencia geografica si se actualizan country/state
-        country_id = update_data.get('country_id', person.country_id)
-        state_id = update_data.get('state_id', person.state_id)
+        country_id = update_data.get('country_id', individual.country_id)
+        state_id = update_data.get('state_id', individual.state_id)
         self._validate_state_country_consistency(country_id, state_id)
 
         # Validar user_id si se está actualizando
@@ -194,44 +194,44 @@ class PersonService:
             elif update_data['user_id']:
                 self._validate_user_exists(update_data['user_id'])
 
-        return self.repository.update_person_compatible(person_id, update_data, updated_by)
+        return self.repository.update_individual_compatible(individual_id, update_data, updated_by)
 
-    def delete_person(self, person_id: int, deleted_by: Optional[int] = None) -> bool:
+    def delete_individual(self, individual_id: int, deleted_by: Optional[int] = None) -> bool:
         """
-        Elimina persona (soft delete).
+        Elimina individuo (soft delete).
 
-        Compatibilidad: DELETE /persons/{person_id}
+        Compatibilidad: DELETE /individuals/{individual_id}
         """
-        # Verificar que existe y está activa
-        self.get_person_by_id(person_id)
+        # Verificar que existe y está activo
+        self.get_individual_by_id(individual_id)
 
         # Aplicar reglas de negocio para eliminación (elimina usuario asociado si existe)
-        self._validate_deletion_rules(person_id, deleted_by)
+        self._validate_deletion_rules(individual_id, deleted_by)
 
-        return self.repository.soft_delete_person(person_id, deleted_by)
+        return self.repository.soft_delete_individual(individual_id, deleted_by)
 
-    def create_person_with_user(
+    def create_individual_with_user(
         self,
         user_data: Dict[str, Any],
-        person_data: Dict[str, Any]
+        individual_data: Dict[str, Any]
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        Crea persona con usuario asociado en transacción atómica.
+        Crea individuo con usuario asociado en transacción atómica.
 
-        Compatibilidad: POST /persons/with-user
+        Compatibilidad: POST /individuals/with-user
         """
         # Validar datos de usuario
         self._validate_user_data(user_data)
 
-        # Validar datos de persona
-        self._validate_person_data(person_data)
+        # Validar datos de individuo
+        self._validate_individual_data(individual_data)
 
         # Validar emails únicos
         if self._email_exists_in_users(user_data['user_email']):
             raise EntityAlreadyExistsError("User", "email", user_data['user_email'])
 
-        if self.repository.find_by_email(person_data['email']):
-            raise EntityAlreadyExistsError("Person", "email", person_data['email'])
+        if self.repository.find_by_email(individual_data['email']):
+            raise EntityAlreadyExistsError("Individual", "email", individual_data['email'])
 
         try:
             # Crear usuario primero
@@ -247,99 +247,99 @@ class PersonService:
             self.db.add(user)
             self.db.flush()  # Obtener ID sin commit
 
-            # Crear persona asociada
-            person_data['user_id'] = user.id
-            person = self.repository.create_person_compatible(person_data)
+            # Crear individuo asociado
+            individual_data['user_id'] = user.id
+            individual = self.repository.create_individual_compatible(individual_data)
 
             self.db.commit()
             self.db.refresh(user)
-            self.db.refresh(person)
+            self.db.refresh(individual)
 
             return (
                 {"id": user.id, "email": user.email, "name": user.name},
-                {"id": person.id, "name": person.first_name, "last_name": person.last_name, "email": person.email}
+                {"id": individual.id, "name": individual.first_name, "last_name": individual.last_name, "email": individual.email}
             )
 
         except Exception as e:
             self.db.rollback()
-            raise BusinessRuleError(f"Error creando usuario y persona: {str(e)}")
+            raise BusinessRuleError(f"Error creando usuario e individuo: {str(e)}")
 
     # ==================== NUEVAS FUNCIONALIDADES EXTENDIDAS ====================
 
-    def create_person_extended(self, person_data: Dict[str, Any]) -> Person:
+    def create_individual_extended(self, individual_data: Dict[str, Any]) -> Individual:
         """
-        Crear persona con todas las funcionalidades extendidas del nuevo modelo.
+        Crear individuo con todas las funcionalidades extendidas del nuevo modelo.
         """
         # Validaciones extendidas
-        self._validate_extended_person_data(person_data)
+        self._validate_extended_individual_data(individual_data)
 
         # Validaciones de unicidad
-        if person_data.get('email') and self.repository.find_by_email(person_data['email']):
-            raise EntityAlreadyExistsError("Person", "email", person_data['email'])
+        if individual_data.get('email') and self.repository.find_by_email(individual_data['email']):
+            raise EntityAlreadyExistsError("Individual", "email", individual_data['email'])
 
-        if person_data.get('document_number') and self.repository.find_by_document(person_data['document_number']):
-            raise EntityAlreadyExistsError("Person", "document_number", person_data['document_number'])
+        if individual_data.get('document_number') and self.repository.find_by_document(individual_data['document_number']):
+            raise EntityAlreadyExistsError("Individual", "document_number", individual_data['document_number'])
 
-        return self.repository.create(person_data)
+        return self.repository.create(individual_data)
 
-    def find_by_document(self, document_number: str) -> Optional[Person]:
+    def find_by_document(self, document_number: str) -> Optional[Individual]:
         """Nueva funcionalidad: buscar por documento."""
         return self.repository.find_by_document(document_number)
 
-    def find_by_phone_number(self, phone: str) -> List[Person]:
+    def find_by_phone_number(self, phone: str) -> List[Individual]:
         """Nueva funcionalidad: buscar por teléfono en array."""
         validated_phone = validate_phone(phone)
         return self.repository.find_by_phone_array(validated_phone)
 
-    def get_persons_by_status(self, status: PersonStatusEnum) -> List[Person]:
+    def get_individuals_by_status(self, status: IndividualStatusEnum) -> List[Individual]:
         """Nueva funcionalidad: filtrar por enum de status."""
         return self.repository.get_by_status_enum(status)
 
-    def get_verified_persons(self) -> List[Person]:
-        """Nueva funcionalidad: obtener personas verificadas."""
-        return self.repository.get_verified_persons()
+    def get_verified_individuals(self) -> List[Individual]:
+        """Nueva funcionalidad: obtener individuos verificados."""
+        return self.repository.get_verified_individuals()
 
-    def verify_person(self, person_id: int, verified_by: int) -> Person:
-        """Nueva funcionalidad: verificar persona."""
-        person = self.get_person_by_id(person_id)
+    def verify_individual(self, individual_id: int, verified_by: int) -> Individual:
+        """Nueva funcionalidad: verificar individuo."""
+        individual = self.get_individual_by_id(individual_id)
 
         # Validar que tiene los datos mínimos para verificación
-        if not person.document_number:
-            raise BusinessRuleError("No se puede verificar persona sin número de documento")
+        if not individual.document_number:
+            raise BusinessRuleError("No se puede verificar individuo sin número de documento")
 
-        if not person.email and not person.phone_numbers:
-            raise BusinessRuleError("No se puede verificar persona sin email o teléfono")
+        if not individual.email and not individual.phone_numbers:
+            raise BusinessRuleError("No se puede verificar individuo sin email o teléfono")
 
         update_data = {
             'is_verified': True,
             'updated_by': verified_by
         }
 
-        return self.repository.update(person_id, update_data)
+        return self.repository.update(individual_id, update_data)
 
-    def search_by_skills(self, skill: str) -> List[Person]:
+    def search_by_skills(self, skill: str) -> List[Individual]:
         """Nueva funcionalidad: buscar por habilidades."""
         return self.repository.search_by_skills(skill)
 
     # ==================== SERVICIOS AVANZADOS DE SKILLS ====================
 
-    def add_skill_to_person(
+    def add_skill_to_individual(
         self,
-        person_id: int,
+        individual_id: int,
         skill_name: str,
         category: str,
         level: str,
         years_experience: int = 0,
         notes: Optional[str] = None,
         updated_by: Optional[int] = None
-    ) -> Person:
+    ) -> Individual:
         """
-        Añadir skill detallada a una persona.
+        Añadir skill detallada a un individuo.
         """
-        person = self.get_person_by_id(person_id)
+        individual = self.get_individual_by_id(individual_id)
 
         # Validar enums
-        from app.entities.persons.schemas.enums import SkillCategoryEnum, SkillLevelEnum
+        from app.entities.individuals.schemas.enums import SkillCategoryEnum, SkillLevelEnum
         try:
             SkillCategoryEnum(category)
             SkillLevelEnum(level)
@@ -351,45 +351,45 @@ class PersonService:
             raise BusinessRuleError("Los años de experiencia no pueden ser negativos")
 
         # Añadir skill usando método del modelo
-        person.add_skill_detail(skill_name, category, level, years_experience, notes)
+        individual.add_skill_detail(skill_name, category, level, years_experience, notes)
 
         # Actualizar auditoría
         if updated_by:
-            person.updated_by = updated_by
+            individual.updated_by = updated_by
 
         self.db.commit()
-        self.db.refresh(person)
-        return person
+        self.db.refresh(individual)
+        return individual
 
-    def remove_skill_from_person(
+    def remove_skill_from_individual(
         self,
-        person_id: int,
+        individual_id: int,
         skill_name: str,
         updated_by: Optional[int] = None
-    ) -> Person:
+    ) -> Individual:
         """
-        Eliminar skill de una persona.
+        Eliminar skill de un individuo.
         """
-        person = self.get_person_by_id(person_id)
+        individual = self.get_individual_by_id(individual_id)
 
         # Eliminar skill usando método del modelo
-        removed = person.remove_skill(skill_name)
+        removed = individual.remove_skill(skill_name)
 
         if not removed:
-            raise BusinessRuleError(f"La persona no tiene la skill '{skill_name}'")
+            raise BusinessRuleError(f"El individuo no tiene la skill '{skill_name}'")
 
         # Actualizar auditoría
         if updated_by:
-            person.updated_by = updated_by
+            individual.updated_by = updated_by
 
         self.db.commit()
-        self.db.refresh(person)
-        return person
+        self.db.refresh(individual)
+        return individual
 
-    def search_by_skill_category(self, category: str) -> List[Person]:
-        """Buscar personas por categoría de skill."""
+    def search_by_skill_category(self, category: str) -> List[Individual]:
+        """Buscar individuos por categoría de skill."""
         # Validar categoría
-        from app.entities.persons.schemas.enums import SkillCategoryEnum
+        from app.entities.individuals.schemas.enums import SkillCategoryEnum
         try:
             SkillCategoryEnum(category)
         except ValueError:
@@ -397,10 +397,10 @@ class PersonService:
 
         return self.repository.search_by_skill_category(category)
 
-    def search_by_skill_level(self, skill_name: str, level: str) -> List[Person]:
-        """Buscar personas con skill específica en nivel mínimo."""
+    def search_by_skill_level(self, skill_name: str, level: str) -> List[Individual]:
+        """Buscar individuos con skill específica en nivel mínimo."""
         # Validar nivel
-        from app.entities.persons.schemas.enums import SkillLevelEnum
+        from app.entities.individuals.schemas.enums import SkillLevelEnum
         try:
             SkillLevelEnum(level)
         except ValueError:
@@ -408,61 +408,61 @@ class PersonService:
 
         return self.repository.search_by_skill_level(skill_name, level)
 
-    def get_persons_with_expert_skills(self) -> List[Person]:
-        """Obtener personas con skills de nivel experto."""
-        return self.repository.get_persons_with_expert_skills()
+    def get_individuals_with_expert_skills(self) -> List[Individual]:
+        """Obtener individuos con skills de nivel experto."""
+        return self.repository.get_individuals_with_expert_skills()
 
-    def search_by_skill_and_experience(self, skill_name: str, min_years: int) -> List[Person]:
-        """Buscar personas con skill y años mínimos de experiencia."""
+    def search_by_skill_and_experience(self, skill_name: str, min_years: int) -> List[Individual]:
+        """Buscar individuos con skill y años mínimos de experiencia."""
         if min_years < 0:
             raise BusinessRuleError("Los años mínimos de experiencia no pueden ser negativos")
 
         return self.repository.search_by_skill_and_experience(skill_name, min_years)
 
-    def get_person_skills_summary(self, person_id: int) -> Dict[str, Any]:
-        """Obtener resumen de skills de una persona."""
-        person = self.get_person_by_id(person_id)
-        return person.get_skills_summary()
+    def get_individual_skills_summary(self, individual_id: int) -> Dict[str, Any]:
+        """Obtener resumen de skills de un individuo."""
+        individual = self.get_individual_by_id(individual_id)
+        return individual.get_skills_summary()
 
-    def get_person_skills_by_category(self, person_id: int, category: str) -> List[Dict[str, Any]]:
-        """Obtener skills de una persona filtradas por categoría."""
-        person = self.get_person_by_id(person_id)
+    def get_individual_skills_by_category(self, individual_id: int, category: str) -> List[Dict[str, Any]]:
+        """Obtener skills de un individuo filtradas por categoría."""
+        individual = self.get_individual_by_id(individual_id)
 
         # Validar categoría
-        from app.entities.persons.schemas.enums import SkillCategoryEnum
+        from app.entities.individuals.schemas.enums import SkillCategoryEnum
         try:
             SkillCategoryEnum(category)
         except ValueError:
             raise BusinessRuleError(f"Categoría de skill inválida: {category}")
 
-        return person.get_skills_by_category(category)
+        return individual.get_skills_by_category(category)
 
-    def get_person_expert_skills(self, person_id: int) -> List[Dict[str, Any]]:
-        """Obtener skills de nivel experto de una persona."""
-        person = self.get_person_by_id(person_id)
-        return person.get_expert_skills()
+    def get_individual_expert_skills(self, individual_id: int) -> List[Dict[str, Any]]:
+        """Obtener skills de nivel experto de un individuo."""
+        individual = self.get_individual_by_id(individual_id)
+        return individual.get_expert_skills()
 
-    def validate_person_skill_requirements(
+    def validate_individual_skill_requirements(
         self,
-        person_id: int,
+        individual_id: int,
         required_skills: List[Dict[str, str]]
     ) -> Dict[str, Any]:
         """
-        Validar si una persona cumple con requisitos de skills.
+        Validar si un individuo cumple con requisitos de skills.
 
         Args:
-            person_id: ID de la persona
+            individual_id: ID del individuo
             required_skills: Lista de skills requeridas con nivel mínimo
                 [{"name": "Python", "level": "ADVANCED"}, ...]
 
         Returns:
             Diccionario con resultado de validación
         """
-        person = self.get_person_by_id(person_id)
+        individual = self.get_individual_by_id(individual_id)
 
         validation_result = {
-            "person_id": person_id,
-            "person_name": person.full_name,
+            "individual_id": individual_id,
+            "individual_name": individual.full_name,
             "meets_requirements": True,
             "skills_validation": [],
             "missing_skills": [],
@@ -482,14 +482,14 @@ class PersonService:
             }
 
             # Verificar si tiene la skill
-            skill_detail = person.get_skill_detail(skill_name)
+            skill_detail = individual.get_skill_detail(skill_name)
 
             if skill_detail:
                 skill_validation["has_skill"] = True
                 skill_validation["current_level"] = skill_detail.get("level")
 
                 # Verificar nivel
-                if person.has_skill_at_level(skill_name, required_level):
+                if individual.has_skill_at_level(skill_name, required_level):
                     skill_validation["meets_requirement"] = True
                 else:
                     skill_validation["meets_requirement"] = False
@@ -509,25 +509,25 @@ class PersonService:
 
     def update_skill_level(
         self,
-        person_id: int,
+        individual_id: int,
         skill_name: str,
         new_level: str,
         years_experience: Optional[int] = None,
         notes: Optional[str] = None,
         updated_by: Optional[int] = None
-    ) -> Person:
+    ) -> Individual:
         """
         Actualizar nivel de una skill existente.
         """
-        person = self.get_person_by_id(person_id)
+        individual = self.get_individual_by_id(individual_id)
 
         # Verificar que la skill existe
-        skill_detail = person.get_skill_detail(skill_name)
+        skill_detail = individual.get_skill_detail(skill_name)
         if not skill_detail:
-            raise BusinessRuleError(f"La persona no tiene la skill '{skill_name}'")
+            raise BusinessRuleError(f"El individuo no tiene la skill '{skill_name}'")
 
         # Validar nuevo nivel
-        from app.entities.persons.schemas.enums import SkillLevelEnum
+        from app.entities.individuals.schemas.enums import SkillLevelEnum
         try:
             SkillLevelEnum(new_level)
         except ValueError:
@@ -538,40 +538,40 @@ class PersonService:
         updated_years = years_experience if years_experience is not None else skill_detail.get("years_experience", 0)
         updated_notes = notes if notes is not None else skill_detail.get("notes")
 
-        person.remove_skill(skill_name)
-        person.add_skill_detail(skill_name, category, new_level, updated_years, updated_notes)
+        individual.remove_skill(skill_name)
+        individual.add_skill_detail(skill_name, category, new_level, updated_years, updated_notes)
 
         # Actualizar auditoría
         if updated_by:
-            person.updated_by = updated_by
+            individual.updated_by = updated_by
 
         self.db.commit()
-        self.db.refresh(person)
-        return person
+        self.db.refresh(individual)
+        return individual
 
-    def get_person_statistics(self) -> Dict[str, Any]:
+    def get_individual_statistics(self) -> Dict[str, Any]:
         """Nueva funcionalidad: obtener estadísticas."""
         return self.repository.get_statistics()
 
-    def calculate_person_age(self, person_id: int) -> Optional[int]:
+    def calculate_individual_age(self, individual_id: int) -> Optional[int]:
         """Nueva funcionalidad: calcular edad desde fecha de nacimiento."""
-        person = self.get_person_by_id(person_id)
-        return person.calculated_age
+        individual = self.get_individual_by_id(individual_id)
+        return individual.calculated_age
 
-    def get_person_bmi(self, person_id: int) -> Optional[float]:
+    def get_individual_bmi(self, individual_id: int) -> Optional[float]:
         """Nueva funcionalidad: calcular BMI."""
-        person = self.get_person_by_id(person_id)
-        return person.bmi
+        individual = self.get_individual_by_id(individual_id)
+        return individual.bmi
 
-    def validate_person_consistency(self, person_id: int) -> List[str]:
+    def validate_individual_consistency(self, individual_id: int) -> List[str]:
         """Nueva funcionalidad: validar consistencia de datos."""
-        person = self.get_person_by_id(person_id)
-        return person.validate_consistency()
+        individual = self.get_individual_by_id(individual_id)
+        return individual.validate_consistency()
 
     # ==================== MÉTODOS DE VALIDACIÓN PRIVADOS ====================
 
-    def _validate_person_data(self, data: Dict[str, Any], is_update: bool = False) -> None:
-        """Validaciones básicas de datos de persona (compatibilidad)."""
+    def _validate_individual_data(self, data: Dict[str, Any], is_update: bool = False) -> None:
+        """Validaciones básicas de datos de individuo (compatibilidad)."""
         errors = {}
 
         # Validaciones requeridas para creación
@@ -609,14 +609,14 @@ class PersonService:
                 errors['phone'] = str(e)
 
         if errors:
-            raise EntityValidationError("Person", errors)
+            raise EntityValidationError("Individual", errors)
 
-    def _validate_extended_person_data(self, data: Dict[str, Any]) -> None:
+    def _validate_extended_individual_data(self, data: Dict[str, Any]) -> None:
         """Validaciones extendidas para el nuevo modelo."""
         errors = {}
 
         # Validaciones básicas
-        self._validate_person_data(data)
+        self._validate_individual_data(data)
 
         # Validaciones extendidas
         if data.get('age'):
@@ -638,7 +638,7 @@ class PersonService:
                 errors['phone_numbers'] = str(e)
 
         if errors:
-            raise EntityValidationError("Person", errors)
+            raise EntityValidationError("Individual", errors)
 
     def _validate_user_exists(self, user_id: int) -> None:
         """Valida que el usuario existe."""
@@ -675,24 +675,24 @@ class PersonService:
         from database import User
         return self.db.query(User).filter(User.email == email).first() is not None
 
-    def _validate_deletion_rules(self, person_id: int, deleted_by: Optional[int] = None) -> None:
+    def _validate_deletion_rules(self, individual_id: int, deleted_by: Optional[int] = None) -> None:
         """
         Valida reglas de negocio para eliminación.
 
-        Si la persona tiene un usuario asociado (creada con /persons/with-user),
+        Si el individuo tiene un usuario asociado (creado con /individuals/with-user),
         también elimina el usuario con soft delete.
         """
         from datetime import datetime
         from database import User
 
-        # Obtener la persona para verificar si tiene usuario asociado
-        person = self.repository.get_by_id(person_id)
-        if not person:
+        # Obtener el individuo para verificar si tiene usuario asociado
+        individual = self.repository.get_by_id(individual_id)
+        if not individual:
             return
 
-        # Si la persona tiene usuario asociado, eliminarlo también
-        if person.user_id:
-            user = self.db.query(User).filter(User.id == person.user_id).first()
+        # Si el individuo tiene usuario asociado, eliminarlo también
+        if individual.user_id:
+            user = self.db.query(User).filter(User.id == individual.user_id).first()
             if user and not user.is_deleted:
                 # Soft delete del usuario
                 user.is_active = False
@@ -701,26 +701,26 @@ class PersonService:
                 user.deleted_by = deleted_by
                 user.updated_by = deleted_by
                 user.updated_at = datetime.utcnow()
-                # No hacer commit aquí, será parte de la transacción del delete de Person
+                # No hacer commit aquí, será parte de la transacción del delete de Individual
 
     # ==================== MÉTODOS DE MAPEO PARA COMPATIBILIDAD ====================
 
-    def get_legacy_response(self, person: Person) -> Dict[str, Any]:
+    def get_legacy_response(self, individual: Individual) -> Dict[str, Any]:
         """
-        Convierte Person al formato de respuesta legacy.
+        Convierte Individual al formato de respuesta legacy.
 
         Para mantener compatibilidad con endpoints existentes.
         """
         return {
-            "id": person.id,
-            "user_id": person.user_id,
-            "name": person.first_name,
-            "last_name": person.last_name,
-            "email": person.email,
-            "phone": person.primary_phone,
-            "address": person.address_street,
-            "status": person.status.value if person.status else "active",
-            "is_active": person.is_active,
-            "created_at": person.created_at,
-            "updated_at": person.updated_at
+            "id": individual.id,
+            "user_id": individual.user_id,
+            "name": individual.first_name,
+            "last_name": individual.last_name,
+            "email": individual.email,
+            "phone": individual.primary_phone,
+            "address": individual.address_street,
+            "status": individual.status.value if individual.status else "active",
+            "is_active": individual.is_active,
+            "created_at": individual.created_at,
+            "updated_at": individual.updated_at
         }

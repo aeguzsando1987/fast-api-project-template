@@ -1,5 +1,5 @@
 """
-Schemas Pydantic para Person
+Schemas Pydantic para Individual
 
 Mantiene compatibilidad total con schemas existentes mientras
 añade funcionalidades extendidas del nuevo modelo.
@@ -10,11 +10,11 @@ from datetime import datetime, date
 from decimal import Decimal
 from pydantic import BaseModel, validator, Field
 
-from app.entities.persons.schemas.enums import (
+from app.entities.individuals.schemas.enums import (
     DocumentTypeEnum,
     GenderEnum,
     MaritalStatusEnum,
-    PersonStatusEnum,
+    IndividualStatusEnum,
     ContactPreferenceEnum,
     EducationLevelEnum,
     EmploymentStatusEnum
@@ -32,14 +32,14 @@ from app.shared.validators import (
 
 
 # ==================== SCHEMAS DE COMPATIBILIDAD ====================
-# Estos mantienen exactamente la misma estructura que modules/persons/schemas.py
+# Estos mantienen exactamente la misma estructura que modules/individuals/schemas.py
 
-class PersonCreate(BaseModel):
+class IndividualCreate(BaseModel):
     """
-    Schema para crear persona - COMPATIBILIDAD TOTAL con módulo existente.
+    Schema para crear individuo - COMPATIBILIDAD TOTAL con módulo existente.
 
     Mantiene exactamente los mismos campos y validaciones
-    que PersonCreate original.
+    que IndividualCreate original.
     """
     user_id: Optional[int] = None  # FK opcional
     name: str
@@ -70,9 +70,9 @@ class PersonCreate(BaseModel):
         return v
 
 
-class PersonUpdate(BaseModel):
+class IndividualUpdate(BaseModel):
     """
-    Schema para actualizar persona - COMPATIBILIDAD TOTAL.
+    Schema para actualizar individuo - COMPATIBILIDAD TOTAL.
     """
     user_id: Optional[int] = None
     name: Optional[str] = None
@@ -110,9 +110,9 @@ class PersonUpdate(BaseModel):
         return v
 
 
-class PersonWithUserCreate(BaseModel):
+class IndividualWithUserCreate(BaseModel):
     """
-    Schema para crear persona con usuario - COMPATIBILIDAD TOTAL.
+    Schema para crear individuo con usuario - COMPATIBILIDAD TOTAL.
     """
     # Datos del usuario
     user_email: str
@@ -148,7 +148,7 @@ class PersonWithUserCreate(BaseModel):
         return v
 
 
-class PersonResponse(BaseModel):
+class IndividualResponse(BaseModel):
     """
     Schema de respuesta - COMPATIBILIDAD TOTAL.
     """
@@ -251,11 +251,11 @@ class EmergencyContactSchema(BaseModel):
         return v
 
 
-class PersonCreateExtended(BaseModel):
+class IndividualCreateExtended(BaseModel):
     """
-    Schema extendido para crear persona con todas las funcionalidades.
+    Schema extendido para crear individuo con todas las funcionalidades.
 
-    Incluye todos los campos del nuevo modelo Person.
+    Incluye todos los campos del nuevo modelo Individual.
     """
     # Campos básicos requeridos
     first_name: str = Field(..., description="Nombre(s)")
@@ -301,7 +301,7 @@ class PersonCreateExtended(BaseModel):
     has_vehicle: Optional[bool] = Field(False, description="Tiene vehículo")
 
     # Status
-    status: Optional[PersonStatusEnum] = Field(PersonStatusEnum.ACTIVE, description="Estado en el sistema")
+    status: Optional[IndividualStatusEnum] = Field(IndividualStatusEnum.ACTIVE, description="Estado en el sistema")
     is_available_for_work: Optional[bool] = Field(True, description="Disponible para trabajo")
 
     # Datos estructurados
@@ -356,9 +356,9 @@ class PersonCreateExtended(BaseModel):
         return v
 
 
-class PersonUpdateExtended(BaseModel):
+class IndividualUpdateExtended(BaseModel):
     """
-    Schema extendido para actualizar persona.
+    Schema extendido para actualizar individuo.
 
     Todos los campos son opcionales para permitir actualizaciones parciales.
     """
@@ -405,7 +405,7 @@ class PersonUpdateExtended(BaseModel):
     is_available_for_work: Optional[bool] = None
 
     # Status
-    status: Optional[PersonStatusEnum] = None
+    status: Optional[IndividualStatusEnum] = None
     is_verified: Optional[bool] = None
     is_active: Optional[bool] = None
 
@@ -453,7 +453,7 @@ class PersonUpdateExtended(BaseModel):
         return v
 
 
-class PersonResponseExtended(BaseModel):
+class IndividualResponseExtended(BaseModel):
     """
     Schema de respuesta extendido con todas las propiedades.
 
@@ -541,7 +541,7 @@ class PersonResponseExtended(BaseModel):
 
 # ==================== SCHEMAS DE UTILIDAD ====================
 
-class PersonSearchFilters(BaseModel):
+class IndividualSearchFilters(BaseModel):
     """Schema para filtros de búsqueda avanzada."""
     # Filtros básicos (compatibilidad)
     name: Optional[str] = None
@@ -578,13 +578,13 @@ class PersonSearchFilters(BaseModel):
     order_desc: bool = False
 
 
-class PersonStatistics(BaseModel):
-    """Schema para estadísticas de personas."""
-    total_persons: int
-    active_persons: int
-    verified_persons: int
-    persons_with_user: int
-    inactive_persons: int
+class IndividualStatistics(BaseModel):
+    """Schema para estadísticas de individuos."""
+    total_individuals: int
+    active_individuals: int
+    verified_individuals: int
+    individuals_with_user: int
+    inactive_individuals: int
 
     # Estadísticas por género
     by_gender: Optional[Dict[str, int]] = None
@@ -601,23 +601,23 @@ class PersonStatistics(BaseModel):
 
 class ValidationResult(BaseModel):
     """Schema para resultado de validación de consistencia."""
-    person_id: int
+    individual_id: int
     is_consistent: bool
     validation_errors: List[str]
 
 
-class PersonAgeCalculation(BaseModel):
+class IndividualAgeCalculation(BaseModel):
     """Schema para cálculo de edad."""
-    person_id: int
+    individual_id: int
     birth_date: Optional[date]
     calculated_age: Optional[int]
     stored_age: Optional[int]
     age_consistent: bool
 
 
-class PersonBMICalculation(BaseModel):
+class IndividualBMICalculation(BaseModel):
     """Schema para cálculo de BMI."""
-    person_id: int
+    individual_id: int
     height: Optional[Decimal]
     weight: Optional[Decimal]
     bmi: Optional[float]

@@ -1652,11 +1652,11 @@ curl -X POST -H "Content-Type: application/x-www-form-urlencoded" \
 - **BaseRepository**: `app/shared/base_repository.py`
 - **Excepciones**: `app/shared/exceptions.py`
 - **Dependencias**: `app/shared/dependencies.py`
-- **Ejemplo completo**: `app/entities/persons/`
+- **Ejemplo completo**: `app/entities/individuals/`
 - **Ejemplo geografico**: `app/entities/countries/` y `app/entities/states/`
 - **Guia detallada**: `ADDING_ENTITIES.md`
 
 ---
 
 **Fecha**: 2025-10-02
-**Mantenido por**: Claude AI + Usuario
+**Mantenido por**: Eric Guzman
