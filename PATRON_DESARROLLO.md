@@ -3,8 +3,9 @@
 > Guia practica con ejemplo completo de dos entidades relacionadas
 
 **Fecha creacion**: 2025-10-02
+**Ultima actualizacion**: 2025-11-06
 **Entidades ejemplo**: Tecnico y Actividad
-**Proposito**: Demostrar el patron de desarrollo completo con relaciones N:1
+**Proposito**: Demostrar el patron de desarrollo completo con relaciones N:1 y sistema de permisos granulares
 
 ---
 
@@ -425,6 +426,7 @@ class TecnicoController:
 ```python
 """
 Router: Tecnico
+IMPORTANTE: Usa sistema de permisos granulares con require_permission()
 """
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
@@ -433,7 +435,7 @@ from app.entities.tecnicos.controllers.tecnico_controller import TecnicoControll
 from app.entities.tecnicos.schemas.tecnico_schemas import (
     TecnicoCreate, TecnicoCreateWithUser, TecnicoUpdate, TecnicoResponse, TecnicoListResponse
 )
-from app.shared.dependencies import get_db, get_current_user
+from app.shared.dependencies import get_db, require_permission
 
 router = APIRouter(prefix="/tecnicos", tags=["Tecnicos"])
 
@@ -442,7 +444,7 @@ router = APIRouter(prefix="/tecnicos", tags=["Tecnicos"])
 def create_tecnico(
     tecnico_data: TecnicoCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("tecnicos", "create", min_level=3))
 ):
     """Crea un nuevo tecnico (POST comun - requiere user_id existente)."""
     controller = TecnicoController(db)
@@ -453,7 +455,7 @@ def create_tecnico(
 def create_tecnico_with_user(
     tecnico_data: TecnicoCreateWithUser,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("tecnicos", "create", min_level=3))
 ):
     """Crea un tecnico junto con su usuario (POST with user)."""
     controller = TecnicoController(db)
@@ -465,7 +467,7 @@ def get_all_tecnicos(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("tecnicos", "list", min_level=1))
 ):
     """Obtiene todos los tecnicos."""
     controller = TecnicoController(db)
@@ -476,7 +478,7 @@ def get_all_tecnicos(
 def get_tecnico(
     tecnico_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("tecnicos", "get", min_level=1))
 ):
     """Obtiene un tecnico por ID."""
     controller = TecnicoController(db)
@@ -488,7 +490,7 @@ def update_tecnico(
     tecnico_id: int,
     tecnico_data: TecnicoUpdate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("tecnicos", "update", min_level=2))
 ):
     """Actualiza un tecnico."""
     controller = TecnicoController(db)
@@ -499,7 +501,7 @@ def update_tecnico(
 def delete_tecnico(
     tecnico_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("tecnicos", "delete", min_level=4))
 ):
     """Elimina un tecnico (soft delete)."""
     controller = TecnicoController(db)
@@ -510,7 +512,7 @@ def delete_tecnico(
 def get_tecnicos_by_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("tecnicos", "list", min_level=1))
 ):
     """Obtiene todos los tecnicos de un usuario."""
     controller = TecnicoController(db)
@@ -521,12 +523,14 @@ def get_tecnicos_by_user(
 def get_tecnicos_by_especialidad(
     especialidad: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("tecnicos", "list", min_level=1))
 ):
     """Obtiene tecnicos por especialidad."""
     controller = TecnicoController(db)
     return controller.get_by_especialidad(especialidad)
 ```
+
+**NOTA IMPORTANTE**: Todos los endpoints usan `require_permission()` en lugar de `get_current_user()` para implementar permisos granulares por entidad y accion.
 
 ---
 
@@ -868,6 +872,7 @@ class ActividadController:
 ```python
 """
 Router: Actividad
+IMPORTANTE: Usa sistema de permisos granulares con require_permission()
 """
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
@@ -876,7 +881,7 @@ from app.entities.actividades.controllers.actividad_controller import ActividadC
 from app.entities.actividades.schemas.actividad_schemas import (
     ActividadCreate, ActividadUpdate, ActividadResponse, ActividadListResponse
 )
-from app.shared.dependencies import get_db, get_current_user
+from app.shared.dependencies import get_db, require_permission
 
 router = APIRouter(prefix="/actividades", tags=["Actividades"])
 
@@ -885,7 +890,7 @@ router = APIRouter(prefix="/actividades", tags=["Actividades"])
 def create_actividad(
     actividad_data: ActividadCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("actividades", "create", min_level=3))
 ):
     """Crea una nueva actividad."""
     controller = ActividadController(db)
@@ -897,7 +902,7 @@ def get_all_actividades(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("actividades", "list", min_level=1))
 ):
     """Obtiene todas las actividades."""
     controller = ActividadController(db)
@@ -908,7 +913,7 @@ def get_all_actividades(
 def get_actividad(
     actividad_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("actividades", "get", min_level=1))
 ):
     """Obtiene una actividad por ID."""
     controller = ActividadController(db)
@@ -920,7 +925,7 @@ def update_actividad(
     actividad_id: int,
     actividad_data: ActividadUpdate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("actividades", "update", min_level=2))
 ):
     """Actualiza una actividad."""
     controller = ActividadController(db)
@@ -931,7 +936,7 @@ def update_actividad(
 def delete_actividad(
     actividad_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("actividades", "delete", min_level=4))
 ):
     """Elimina una actividad (soft delete)."""
     controller = ActividadController(db)
@@ -942,7 +947,7 @@ def delete_actividad(
 def get_actividades_by_tecnico(
     tecnico_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("actividades", "list", min_level=1))
 ):
     """Obtiene todas las actividades de un tecnico."""
     controller = ActividadController(db)
@@ -953,11 +958,154 @@ def get_actividades_by_tecnico(
 def get_actividades_by_estado(
     estado: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("actividades", "list", min_level=1))
 ):
     """Obtiene actividades por estado."""
     controller = ActividadController(db)
     return controller.get_by_estado(estado)
+```
+
+**NOTA IMPORTANTE**: Todos los endpoints usan `require_permission()` para control granular de acceso por entidad y accion.
+
+---
+
+## Paso 2.7: Definir Permisos Granulares
+
+### Ubicacion: app/shared/data/permissions_seed_data.py
+
+Cada entidad requiere definir permisos especificos y asignarlos a los roles.
+
+**Estructura de permisos para Tecnico:**
+
+```python
+# En PERMISSIONS_DATA
+{
+    "entity": "tecnicos",
+    "action": "list",
+    "endpoint": "/tecnicos/",
+    "http_method": "GET",
+    "description": "Listar todos los tecnicos"
+},
+{
+    "entity": "tecnicos",
+    "action": "get",
+    "endpoint": "/tecnicos/{id}",
+    "http_method": "GET",
+    "description": "Obtener tecnico por ID"
+},
+{
+    "entity": "tecnicos",
+    "action": "create",
+    "endpoint": "/tecnicos/",
+    "http_method": "POST",
+    "description": "Crear nuevo tecnico"
+},
+{
+    "entity": "tecnicos",
+    "action": "update",
+    "endpoint": "/tecnicos/{id}",
+    "http_method": "PUT",
+    "description": "Actualizar tecnico"
+},
+{
+    "entity": "tecnicos",
+    "action": "delete",
+    "endpoint": "/tecnicos/{id}",
+    "http_method": "DELETE",
+    "description": "Eliminar tecnico (soft delete)"
+},
+```
+
+**Estructura de permisos para Actividad:**
+
+```python
+# Similar estructura para actividades
+{
+    "entity": "actividades",
+    "action": "list",
+    "endpoint": "/actividades/",
+    "http_method": "GET",
+    "description": "Listar todas las actividades"
+},
+# ... resto de acciones CRUD
+```
+
+**Asignacion de permisos por rol en TEMPLATE_PERMISSION_MATRIX:**
+
+```python
+TEMPLATE_PERMISSION_MATRIX = {
+    "Admin": {
+        "tecnicos:list": 4,      # Nivel 4 (Delete) incluye todos los niveles
+        "tecnicos:get": 4,
+        "tecnicos:create": 4,
+        "tecnicos:update": 4,
+        "tecnicos:delete": 4,
+        "actividades:list": 4,
+        "actividades:get": 4,
+        "actividades:create": 4,
+        "actividades:update": 4,
+        "actividades:delete": 4,
+    },
+    "Manager": {
+        "tecnicos:list": 3,      # Nivel 3 (Create) incluye Read y Update
+        "tecnicos:get": 3,
+        "tecnicos:create": 3,
+        "tecnicos:update": 3,
+        "tecnicos:delete": 0,    # Sin permiso de eliminar
+        "actividades:list": 3,
+        "actividades:get": 3,
+        "actividades:create": 3,
+        "actividades:update": 3,
+        "actividades:delete": 0,
+    },
+    "Collaborator": {
+        "tecnicos:list": 3,      # Puede crear, actualizar y leer
+        "tecnicos:get": 3,
+        "tecnicos:create": 3,
+        "tecnicos:update": 3,
+        "tecnicos:delete": 2,    # Solo Update (insuficiente para delete)
+        "actividades:list": 3,
+        "actividades:get": 3,
+        "actividades:create": 3,
+        "actividades:update": 3,
+        "actividades:delete": 2,
+    },
+    "Reader": {
+        "tecnicos:list": 1,      # Solo lectura
+        "tecnicos:get": 1,
+        "tecnicos:create": 0,
+        "tecnicos:update": 0,
+        "tecnicos:delete": 0,
+        "actividades:list": 1,
+        "actividades:get": 1,
+        "actividades:create": 0,
+        "actividades:update": 0,
+        "actividades:delete": 0,
+    },
+    "Guest": {
+        # Sin acceso a tecnicos ni actividades
+    }
+}
+```
+
+**Niveles de permisos:**
+
+| Nivel | Valor | Descripcion | Incluye |
+|-------|-------|-------------|---------|
+| None | 0 | Sin acceso | - |
+| Read | 1 | Solo lectura (GET) | - |
+| Update | 2 | Modificar registros (PATCH/PUT) | Read |
+| Create | 3 | Crear registros (POST) | Read + Update |
+| Delete | 4 | Eliminar registros (DELETE) | Read + Update + Create |
+
+**IMPORTANTE**: Despues de agregar permisos, ejecutar:
+
+```bash
+# Truncar base de datos para recargar permisos
+python truncate_db.py
+
+# Reiniciar servidor
+python main.py
 ```
 
 ---
@@ -1660,5 +1808,27 @@ curl -X POST -H "Content-Type: application/x-www-form-urlencoded" \
 
 ---
 
-**Fecha**: 2025-10-02
+## Resumen del Sistema de Permisos Granulares
+
+El proyecto implementa un sistema de permisos de 5 niveles (0-4) que permite control fino sobre cada entidad y accion:
+
+**Estado actual (v1.1.0):**
+- Sistema de permisos: Phase 1 Complete (Database + Core Logic)
+- Entidades con permisos: individuals, countries, states, companies
+- Total de permisos definidos: 24
+- Total de asignaciones: 83 (distribuidas en 5 roles)
+
+**Proximas fases:**
+- Phase 2: Autodiscovery de endpoints
+- Phase 3: User-level overrides (tabla ya creada)
+- Phase 4: Temporal permissions (tabla ya creada)
+
+**Referencia completa:**
+Ver seccion "Granular Permissions System" en CLAUDE.md para documentacion detallada del sistema.
+
+---
+
+**Fecha creacion**: 2025-10-02
+**Ultima actualizacion**: 2025-11-06
 **Mantenido por**: Eric Guzman
+**Version del proyecto**: 1.1.0

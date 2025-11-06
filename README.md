@@ -204,21 +204,35 @@ def delete_company(
 - `GET /countries/` - 3 pre-loaded
 - `GET /states/by-country/{id}` - 114 pre-loaded
 
+NOTE: The countries and states are pre-loaded in the database. You can find the data in the `app/shared/data/` folder. Curently working on a method and UI to load the countries and states from a CSV file.
 ---
 
 ## Utilities
 
+This project includes a consolidated CLI for common maintenance tasks. This is the list of available commands and how to use them:
+
 ```bash
-# Generate secret key
-python generate_secret_key.py
+# Generate a secret key for production deployment
+python scripts.py genkey
 
-# Reset database (dev only)
-python truncate_db.py
+# Create a postgres database using the DATABASE_URL from .env
+python scripts.py createdb
 
-# Verify permissions
-python verify_companies_permissions.py
+# Iniciar servidor en puerto libre Start the server using the PORT from .env
+python scripts.py start
+
+# Restart the server (useful when you change the port or kill all the processes)
+python scripts.py restart
+
+# Truncates the whole database
+python scripts.py truncate
+
+# Truncates the whole database (alternative method)
+python scripts.py truncate-hard
+
+# Show help
+python scripts.py help
 ```
-
 ---
 
 ## Deployment
@@ -315,6 +329,11 @@ A base entity that cab be of great initial use for any project. The entitty has 
 - N+1 query prevention with joinedload()
 - Indexed critical fields (tin, email, status)
 - Optimized search queries
+
+## Next Steps
+
+- Add a method and UI to load the countries and states from a CSV file.
+- UI demo to interact with base entities.
 
 ---
 
