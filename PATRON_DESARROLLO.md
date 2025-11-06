@@ -1608,10 +1608,12 @@ Para agregar una nueva entidad, seguir estos pasos:
 - [ ] Implementar Repository heredando de BaseRepository
 - [ ] Implementar Service con validaciones de negocio
 - [ ] Implementar Controller
-- [ ] Implementar Router con dependencias de auth
+- [ ] Definir permisos en `permissions_seed_data.py` (5 CRUD + customs)
+- [ ] Asignar permisos a roles en `TEMPLATE_PERMISSION_MATRIX`
+- [ ] Implementar Router con `Depends(require_permission(entity, action))`
 - [ ] Registrar router en main.py
-- [ ] Crear tabla en base de datos
-- [ ] Probar endpoints en Swagger
+- [ ] Re-sincronizar base de datos (truncate permisos + restart server)
+- [ ] Probar endpoints en Swagger con diferentes roles
 - [ ] Crear tests unitarios (opcional)
 
 ---

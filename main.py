@@ -21,6 +21,7 @@ load_dotenv()
 from app.entities.individuals.routers.individual_router import router as new_individuals_router
 from app.entities.countries.routers.country_router import router as country_router
 from app.entities.states.routers.state_router import router as state_router
+from app.entities.companies.routers.company_router import router as company_router
 
 # Crear aplicación FastAPI con configuración de seguridad para Swagger
 app = FastAPI(
@@ -33,6 +34,7 @@ app = FastAPI(
         {"name": "Individuals", "description": "Gestión de individuos"},
         {"name": "Countries", "description": "Gestión de paises"},
         {"name": "States", "description": "Gestión de estados/provincias"},
+        {"name": "Companies", "description": "Gestión de empresas"},
         {"name": "health", "description": "Estado del sistema"}
     ]
 )
@@ -62,6 +64,7 @@ app.include_router(new_individuals_router)
 # Incluir routers de entidades base
 app.include_router(country_router)
 app.include_router(state_router)
+app.include_router(company_router)
 
 # Modelos Pydantic para requests/responses
 class UserLogin(BaseModel):

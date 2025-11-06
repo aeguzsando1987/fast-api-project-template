@@ -41,6 +41,7 @@ class Country(Base):
 
     # Relaciones
     states = relationship("State", back_populates="country", cascade="all, delete-orphan")
+    companies = relationship("Company", back_populates="country")
 
     def __repr__(self):
         return f"<Country(id={self.id}, name={self.name}, iso={self.iso_code_2})>"

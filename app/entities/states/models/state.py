@@ -30,6 +30,9 @@ class State(Base):
     country_id = Column(Integer, ForeignKey('countries.id'), nullable=False, index=True)
     country = relationship("Country", back_populates="states")
 
+    # Relacion con Companies
+    companies = relationship("Company", back_populates="state")
+
     # Campos de auditoria
     is_active = Column(Boolean, default=True, nullable=False, comment="Indica si el estado esta activo")
     is_deleted = Column(Boolean, default=False, nullable=False, comment="Borrado logico")

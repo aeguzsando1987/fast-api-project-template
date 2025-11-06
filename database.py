@@ -84,3 +84,10 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# Importar modelos de permisos AL FINAL para evitar circular imports
+# (deben importarse después de que Base esté definido)
+from app.shared.models.permission import Permission
+from app.shared.models.permission_template import PermissionTemplate
+from app.shared.models.permission_template_item import PermissionTemplateItem
+from app.shared.models.user_permission import UserPermission

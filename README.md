@@ -1,373 +1,347 @@
-# FastAPI Template - Plantilla Empresarial con Arquitectura de Capas
+# FastAPI Dynamic API Template
 
-> Plantilla profesional FastAPI lista para proyectos empresariales con autenticación JWT, arquitectura de 7 capas y configuración híbrida.
+> Enterprise-ready FastAPI template with 7-layer architecture and granular permissions system.
 
-## Características Principales
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-green)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12%2B-blue)](https://www.postgresql.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-- **Arquitectura de 7 Capas** - Router → Controller → Service → Repository → Model → Database
-- **Autenticación JWT** con OAuth2 integrado en Swagger
-- **BaseRepository Genérico** con TypeVar[T] reutilizable en todas las entidades
-- **Configuración Híbrida** - config.toml (público) + .env (secretos)
-- **3 Entidades Base Completas**:
-  - **Individual** - Ejemplo completo con 40+ campos, skills JSONB, validaciones
-  - **Country** - Países con códigos ISO 3166 (3 países precargados)
-  - **State** - Estados/Provincias/Departamentos (114 precargados)
-- **Soft Delete** y campos de auditoría en todas las entidades
-- **Inicialización Automática** de base de datos con datos geográficos
-- **Sistema de Roles** de 5 niveles (Admin, Gerente, Colaborador, Lector, Guest)
-- **Tests Unitarios** incluidos
-- **Documentación Completa** con ejemplos paso a paso
+## Key Features
+
+- **7-Layer Architecture** - Router → Controller → Service → Repository → Model → Database
+- **JWT Authentication** - OAuth2 integration with Swagger UI
+- **Generic BaseRepository** - TypeVar[T] for reusable CRUD operations
+- **Granular Permissions System** - Entity-level access control with 5 hierarchical levels
+- **Geographic Data** - Pre-loaded countries (3) and states (114) with ISO codes
+- **4 Production-Ready Entities**:
+  - **Individuals** - Complete example with 40+ fields, JSONB skills system
+  - **Countries** - ISO 3166 countries
+  - **States** - States/provinces by country
+  - **Companies** - NEW: Full CRUD with 20 endpoints, TIN validation, advanced search
+- **Soft Delete & Audit** - Track created_by, updated_by, deleted_by on all entities
+- **Hybrid Configuration** - config.toml (public) + .env (secrets)
 
 ---
 
-## Requisitos Previos
+## Quick Start
+
+### Prerequisites
 
 - Python 3.8+
 - PostgreSQL 12+
 - Git
 
----
-
-## Instalación Rápida
-
-### 1. Clonar/Copiar Template
+### Installation
 
 ```bash
-git clone <url-del-repositorio> mi-nuevo-proyecto
-cd mi-nuevo-proyecto
-```
-
-### 2. Crear Ambiente Virtual
-
-```bash
+# Clone and setup
+git clone <repository-url> my-api-project
+cd my-api-project
 python -m venv venv
 
-# Windows:
-venv\Scripts\activate
+# Activate virtual environment
+# Windows: venv\Scripts\activate
+# Linux/Mac: source venv/bin/activate
 
-# Linux/Mac:
-source venv/bin/activate
-```
-
-### 3. Instalar Dependencias
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Configure database
+createdb my_project_db
 ```
 
-### 4. Configurar Base de Datos
+### Configuration
 
-```bash
-# Crear base de datos en PostgreSQL
-psql -U postgres
-CREATE DATABASE mi_proyecto_db;
-\q
-```
-
-### 5. Configurar Variables de Entorno
-
-Editar `.env` con tu configuración (el template funciona sin .env con valores por defecto):
+Create `.env` file:
 
 ```env
-# Base de datos
-DATABASE_URL=postgresql://postgres:tu_password@localhost:5432/mi_proyecto_db
-
-# JWT Security (generar con generate_secret_key.py)
-SECRET_KEY=tu-clave-secreta-super-segura
-
-# Admin por defecto
-DEFAULT_ADMIN_EMAIL=admin@tuempresa.com
-DEFAULT_ADMIN_PASSWORD=tu_password_seguro
+DATABASE_URL=postgresql://postgres:password@localhost:5432/my_project_db
+SECRET_KEY=your-super-secret-key-here
+DEFAULT_ADMIN_EMAIL=admin@yourcompany.com
+DEFAULT_ADMIN_PASSWORD=change-in-production
+PORT=8001
 ```
 
-### 6. Iniciar Aplicación
-
-```bash
-python main.py
-```
-
-### 7. Verificar Instalación
-
-Abrir en el navegador:
-- **Swagger UI:** http://localhost:8001/docs
-- **ReDoc:** http://localhost:8001/redoc
-
-**Usuario Admin por Defecto:**
-- Email: `admin@tuempresa.com`
-- Password: `root`
-
----
-
-## WebApp Demo Funcional
-
-En la carpeta [webapp_demo/](../webapp_demo/) encontrarás aplicaciones web funcionales que consumen esta API:
-
-### Vanilla JS Demo (95% Completo)
-- Login con JWT y manejo de roles
-- CRUD completo de Individuos con modales
-- Dual View Mode (Dashboard cards y Tabla)
-- Sistema de skills (backend listo)
-- 10 bugs corregidos durante desarrollo
-- Interfaz oscura con colores guindas (#8B1538)
-
-Ver [webapp_demo/README.md](../webapp_demo/README.md) para instrucciones de uso.
-
----
-
-## Documentación Completa
-
-### Para Comenzar a Desarrollar
-
-1. **[PATRON_DESARROLLO.md](PATRON_DESARROLLO.md)** - **LECTURA OBLIGATORIA**
-   - Ejemplo completo con entidades Técnico y Actividad
-   - Patrón de 7 capas explicado paso a paso
-   - POST común vs POST with user (para entidades de personal)
-   - 8 ejemplos de Enums comunes
-   - Código completo de las 6 capas por entidad
-   - Pruebas en Swagger con ejemplos de requests/responses
-   - Validaciones y transacciones atómicas
-
-2. **[ADDING_ENTITIES.md](ADDING_ENTITIES.md)** - Guía paso a paso
-   - Cómo agregar nuevas entidades al proyecto
-   - Estructura de archivos necesarios
-   - Ejemplos con Individual, Country, State
-   - Checklist de implementación
-
-### Arquitectura del Proyecto
-
-```
-app/
-├── entities/              # Entidades del negocio
-│   ├── individuals/       # Ejemplo completo (40+ campos)
-│   ├── countries/        # Países con ISO codes
-│   ├── states/           # Estados por país
-│   └── users/            # Usuarios del sistema
-│
-├── shared/               # Código compartido
-│   ├── base_repository.py        # Repository genérico
-│   ├── exceptions.py              # Excepciones custom
-│   ├── dependencies.py            # Dependencias FastAPI
-│   ├── init_db.py                 # Auto-inicialización BD
-│   └── data/                      # Datos precargados
-│
-└── tests/                # Tests unitarios
-    ├── test_individuals/
-    └── test_users/
-```
-
----
-
-## Agregar Nueva Entidad - Resumen Rápido
-
-**Para agregar una nueva entidad (ej: Producto):**
-
-1. Leer **[PATRON_DESARROLLO.md](PATRON_DESARROLLO.md)** - Tiene el ejemplo completo
-2. Crear carpeta `app/entities/productos/`
-3. Crear 6 archivos siguiendo el patrón:
-   - `models/producto.py` - Modelo SQLAlchemy
-   - `schemas/producto_schemas.py` - Schemas Pydantic
-   - `repositories/producto_repository.py` - Operaciones BD
-   - `services/producto_service.py` - Lógica de negocio
-   - `controllers/producto_controller.py` - Manejo de requests
-   - `routers/producto_router.py` - Endpoints FastAPI
-4. Registrar router en `main.py`
-5. Probar en Swagger
-
-**Consulta [PATRON_DESARROLLO.md](PATRON_DESARROLLO.md) para ver el código completo de cada archivo.**
-
----
-
-## Endpoints Disponibles
-
-### Autenticación
-- `POST /token` - Obtener token JWT
-
-### Usuarios
-- `POST /users` - Crear usuario
-- `GET /users` - Listar usuarios
-- `GET /users/me` - Perfil actual
-- `GET /users/roles` - Lista de roles disponibles
-- `PUT /users/{id}` - Actualizar usuario
-- `DELETE /users/{id}` - Eliminar usuario
-
-### Individuals (Ejemplo completo)
-- 25+ endpoints con CRUD, skills, búsquedas, cálculos
-
-### Countries & States
-- `GET /countries/` - Listar países (3 precargados)
-- `GET /states/by-country/{id}` - Estados por país (114 precargados)
-
----
-
-## Sistema de Permisos
-
-### Jerarquía de Roles
-
-| Rol | Nivel | Descripción | Permisos |
-|-----|-------|-------------|----------|
-| Admin | 1 | Administrador | Acceso total |
-| Gerente | 2 | Manager | CRUD usuarios y entidades |
-| Colaborador | 3 | Collaborator | CRUD entidades |
-| Lector | 4 | Reader | Solo lectura |
-| Guest | 5 | Invitado | Acceso limitado |
-
-### Usar en Endpoints
-
-```python
-from app.shared.dependencies import get_current_user
-
-# Solo Admin
-@router.delete("/recurso/{id}")
-def delete_recurso(current_user = Depends(get_current_user)):
-    if current_user.role != 1:
-        raise HTTPException(403, "Solo Admin")
-```
-
-Ver **[PATRON_DESARROLLO.md](PATRON_DESARROLLO.md)** para ejemplos completos de autorización.
-
----
-
-## Comandos Útiles
-
-### Servidor
-```bash
-python main.py
-```
-
-### Ver Documentación
-```
-http://localhost:8001/docs
-```
-
-### Truncar Base de Datos
-```bash
-python truncate_db.py
-```
-
-### Ejecutar Tests
-```bash
-pytest app/tests/ -v
-```
-
-### Generar Secret Key
+Generate secure secret key:
 ```bash
 python generate_secret_key.py
 ```
 
----
+### Run Server
 
-## Configuración Híbrida
-
-**config.toml** - Valores públicos (versionado en git):
-- Configuración de features
-- Límites de paginación
-- Validaciones de negocio
-- Pool de conexiones
-
-**.env** - Valores secretos (NO versionar):
-- DATABASE_URL
-- SECRET_KEY
-- Credenciales de admin
-
-El sistema usa `.env` con fallback a `config.toml` para máxima flexibilidad.
-
----
-
-## Estructura de Archivos
-
-```
-mi-proyecto/
-├── app/
-│   ├── entities/              # Entidades del negocio
-│   ├── shared/                # Código compartido
-│   └── tests/                 # Tests unitarios
-├── main.py                    # Aplicación FastAPI
-├── database.py               # Configuración DB
-├── config.toml               # Config pública
-├── .env                      # Config secreta
-├── requirements.txt          # Dependencias
-├── README.md                 # Este archivo
-├── PATRON_DESARROLLO.md      # Guía de desarrollo
-└── ADDING_ENTITIES.md        # Cómo agregar entidades
+```bash
+python main.py
 ```
 
+**Access:**
+- Swagger UI: http://localhost:8001/docs
+- ReDoc: http://localhost:8001/redoc
+
+**Default Admin:**
+- Email: `admin@tuempresa.com`
+- Password: `root`
 ---
 
-## Entidades Precargadas
+## Documentation
 
-Al iniciar el servidor por primera vez, se cargan automáticamente:
+### Developer Guides
 
-### Countries (3)
-- United States (US/USA/840)
-- Mexico (MX/MEX/484)
-- Colombia (CO/COL/170)
+- **[PATRON_DESARROLLO.md](PATRON_DESARROLLO.md)** - Complete development pattern with examples
+- **[ADDING_ENTITIES.md](ADDING_ENTITIES.md)** - Step-by-step guide to add entities
 
-### States (114)
-- USA: 50 estados
-- Mexico: 32 estados
-- Colombia: 32 departamentos
+### Add New Entity (30-45 minutes)
 
----
-
-## Próximos Pasos Después de Instalar
-
-1. ✅ **Leer [PATRON_DESARROLLO.md](PATRON_DESARROLLO.md)** - Entender el patrón completo
-2. ✅ Explorar las 3 entidades base en `app/entities/`
-3. ✅ Probar endpoints en Swagger (http://localhost:8001/docs)
-4. ✅ Crear tu primera entidad siguiendo el patrón
-5. ✅ Personalizar configuración en `config.toml` y `.env`
-
----
-
-## Deployment a Producción
-
-1. **Generar claves seguras:**
-   ```bash
-   python generate_secret_key.py
-   ```
-
-2. **Configurar .env** con valores de producción
-
-3. **Usar servidor ASGI:**
-   ```bash
-   pip install gunicorn
-   gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
-   ```
+1. Read [PATRON_DESARROLLO.md](PATRON_DESARROLLO.md)
+2. Create `app/entities/<entity_name>/` with 6 files:
+   - `models/<entity>_model.py`
+   - `schemas/<entity>_schemas.py`
+   - `repositories/<entity>_repository.py`
+   - `services/<entity>_service.py`
+   - `controllers/<entity>_controller.py`
+   - `routers/<entity>_router.py`
+3. Register router in `main.py`
+4. Test in Swagger UI
 
 ---
 
-## Características Técnicas Avanzadas
+## Architecture
 
-- **BaseRepository Genérico** - Reutilizable con TypeVar[T]
-- **Soft Delete** - No eliminación física de datos
-- **Campos de Auditoría** - created_at, updated_at, updated_by
-- **Validaciones en Múltiples Capas** - Pydantic + Lógica de Negocio
-- **Transacciones Atómicas** - flush() + commit() para operaciones múltiples
-- **Relaciones Bidireccionales** - SQLAlchemy relationships configuradas
-- **Inicialización Idempotente** - No duplica datos en reinicios
+### Project Structure
+
+```
+app/
+├── entities/
+│   ├── individuals/    # 40+ fields, JSONB skills
+│   ├── countries/      # ISO 3166 data
+│   ├── states/         # Geographic data
+│   ├── companies/      # NEW: 20 endpoints
+│   └── users/          # System users
+├── shared/
+│   ├── base_repository.py
+│   ├── exceptions.py
+│   ├── dependencies.py
+│   ├── models/         # Permission system
+│   └── data/           # Seed data
+└── tests/
+```
+
+### 7-Layer Pattern
+
+**Flow:** Request → Router → Controller → Service → Repository → Model → Database
+
+Each layer has a specific responsibility:
+- **Router:** FastAPI endpoints and dependencies
+- **Controller:** Request/response orchestration
+- **Service:** Business logic and validations
+- **Repository:** Database queries (extends BaseRepository)
+- **Model:** SQLAlchemy table definitions
+- **Schemas:** Pydantic validation models
+- **Database:** PostgreSQL via SQLAlchemy ORM
 
 ---
 
-## Soporte y Documentación
+## Permissions System
 
-- **¿Cómo agregar una entidad?** → Ver [PATRON_DESARROLLO.md](PATRON_DESARROLLO.md)
-- **¿Cómo funciona la arquitectura?** → Ver [ADDING_ENTITIES.md](ADDING_ENTITIES.md)
-- **¿Problemas con la instalación?** → Revisar logs en consola
+### Permission Levels
+
+| Level | Description | Access |
+|-------|-------------|--------|
+| 0 | None | No access |
+| 1 | Read | GET endpoints |
+| 2 | Update | Read + PUT/PATCH |
+| 3 | Create | Read + Update + POST |
+| 4 | Delete | All operations |
+
+### Role Matrix
+
+| Role | Level | Companies Access |
+|------|-------|-----------------|
+| Admin | 1 | Full (Level 4) |
+| Manager | 2 | Cannot delete (Level 3) |
+| Collaborator | 3 | Cannot delete (Level 3) |
+| Reader | 4 | Read-only (Level 1) |
+| Guest | 5 | No access |
+
+### Usage
+
+```python
+from app.shared.dependencies import require_permission
+
+@router.delete("/companies/{id}")
+def delete_company(
+    id: int,
+    current_user: User = Depends(require_permission("companies", "delete", min_level=4))
+):
+    return company_service.delete(id)
+```
 
 ---
 
-## Autor
+## Available Endpoints
+
+### Authentication
+- `POST /token` - Get JWT token
+
+### Users
+- `POST /users` - Create user
+- `GET /users` - List users
+- `GET /users/me` - Current user profile
+
+### Individuals (25+ endpoints)
+- CRUD operations
+- Skills management (JSONB)
+- Advanced search and statistics
+
+### Companies (20 endpoints)
+- **CRUD:** POST, GET, PUT, DELETE
+- **Search:** By TIN, country, state, advanced filters
+- **Operations:** Activate, suspend, deactivate
+- **Analytics:** Statistics and aggregations
+- **Details:** With geographic relationships
+
+### Countries & States
+- `GET /countries/` - 3 pre-loaded
+- `GET /states/by-country/{id}` - 114 pre-loaded
+
+---
+
+## Utilities
+
+```bash
+# Generate secret key
+python generate_secret_key.py
+
+# Reset database (dev only)
+python truncate_db.py
+
+# Verify permissions
+python verify_companies_permissions.py
+```
+
+---
+
+## Deployment
+
+### Production Checklist
+
+- Generate secure `SECRET_KEY`
+- Configure production `DATABASE_URL`
+- Change `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD` by your own preferences
+- Set `DEBUG=false` in config.toml
+- Configure CORS for your domain
+- Use ASGI server (gunicorn + uvicorn)
+
+### Run with Gunicorn
+
+```bash
+pip install gunicorn
+gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8001
+```
+
+### Docker Deployment
+
+This project can be dockerized. Create these files in the root of the project:
+
+**`Dockerfile`:**
+```dockerfile
+FROM python:3.8-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8001
+CMD ["python", "main.py"]
+```
+
+**`docker-compose.yml`:**
+```yaml
+services:
+  api:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://postgres:root@db:5432/db_test_template
+      SECRET_KEY: ${SECRET_KEY}
+    depends_on:
+      - db
+  db:
+    image: postgres:12
+    environment:
+      POSTGRES_DB: db_test_template
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+  postgres_data:
+```
+
+**`.dockerignore`:**
+```
+venv/
+__pycache__/
+*.pyc
+.env
+.git/
+```
+
+**Run:**
+```bash
+docker-compose up -d
+```
+
+Instructions in [migrations/README.md](migrations/README.md#estructura-de-archivos-docker).
+
+---
+
+## What's New (v1.1.0)
+
+### Companies Entity
+A base entity that cab be of great initial use for any project. The entitty has the following features:
+- 20 production-ready endpoints
+- 7 granular permissions
+- TIN validation for 9 tax systems (RFC, EIN, NIF, VAT, CUIT, RUC, RUT, CNPJ, OTHER)
+- Geographic relationships with countries/states
+- Advanced search and statistics
+- Status management (active, inactive, suspended, waiting)
+
+### Bug Fixes
+- Fixed User.username AttributeError in /details endpoint
+- Updated bidirectional relationships in Country/State models
+
+### Improvements
+- N+1 query prevention with joinedload()
+- Indexed critical fields (tin, email, status)
+- Optimized search queries
+
+---
+
+## Security Features
+
+- JWT token authentication with expiration
+- Password hashing (bcrypt via passlib)
+- Role-based access control (5 levels)
+- Granular entity-level permissions
+- SQL injection prevention (ORM)
+- Soft delete for data safety
+- Complete audit trail
+- CORS configuration
+
+---
+
+## License
+
+MIT License - Free for personal and commercial use.
+
+---
+
+## Author
 
 **Eric Guzman**
 
 ---
 
-## Licencia
-
-Template libre para uso en proyectos personales y comerciales.
-
----
-
-**Última actualización:** 2025-10-03
-**Versión:** 1.0.0
-**Estado:** Producción Ready + WebApp Demo Funcional
+**Version:** 1.1.0
+**Last Updated:** 2025-11-06

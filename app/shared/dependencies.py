@@ -332,3 +332,140 @@ def get_app_settings():
         "environment": os.getenv("ENVIRONMENT", "development"),
         "debug": os.getenv("DEBUG", "false").lower() == "true"
     }
+
+
+# ==================== DEPENDENCIAS DE PERMISOS GRANULARES ====================
+
+def require_permission(entity: str, action: str, min_level: int = 1):
+    """
+    Crea una dependencia que valida permisos granulares por entidad y acción.
+
+    Este sistema valida permisos específicos a nivel de endpoint, permitiendo
+    control fino sobre qué operaciones puede realizar cada rol.
+
+    Args:
+        entity: Nombre de la entidad (ej: "individuals", "users")
+        action: Acción específica (ej: "list", "create", "manage_skills")
+        min_level: Nivel mínimo de permiso requerido (0-4)
+            0 = None (sin acceso)
+            1 = Read (solo lectura)
+            2 = Update (lectura + actualización)
+            3 = Create (lectura + creación + actualización)
+            4 = Delete (acceso total)
+
+    Returns:
+        Función de dependencia para FastAPI que valida el permiso
+
+    Ejemplo básico:
+        @router.get("/individuals/")
+        def list_individuals(
+            current_user: User = Depends(require_permission("individuals", "list"))
+        ):
+            # Solo usuarios con permiso "individuals:list" pueden acceder
+            pass
+
+    Ejemplo con nivel mínimo:
+        @router.delete("/individuals/{id}")
+        def delete_individual(
+            id: int,
+            current_user: User = Depends(require_permission("individuals", "delete", min_level=4))
+        ):
+            # Solo usuarios con nivel 4 (Delete) o superior en "individuals:delete"
+            pass
+
+    Ejemplo con permiso custom:
+        @router.post("/individuals/{id}/skills")
+        def add_skill(
+            id: int,
+            skill_data: dict,
+            current_user: User = Depends(require_permission("individuals", "manage_skills", min_level=3))
+        ):
+            # Permiso específico para gestión de skills
+            pass
+
+    Cómo funciona:
+        1. Obtiene el usuario autenticado
+        2. Busca el permiso específico en su rol (template)
+        3. Valida el nivel mínimo requerido
+        4. Permite o deniega el acceso
+
+    NOTA: Para Fase 1, esta función verifica contra la tabla permission_templates.
+    En fases posteriores, también verificará user_permissions (overrides individuales).
+    """
+    def permission_checker(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ) -> User:
+        from app.shared.models.permission_template import PermissionTemplate
+        from app.shared.models.permission_template_item import PermissionTemplateItem
+        from app.shared.models.permission import Permission
+
+        # 1. Obtener el template del rol del usuario
+        # Mapeo de roles legacy (1-5) a nombres de templates
+        role_mapping = {
+            1: "Admin",
+            2: "Manager",
+            3: "Collaborator",
+            4: "Reader",
+            5: "Guest"
+        }
+
+        role_name = role_mapping.get(current_user.role)
+        if not role_name:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Rol de usuario inválido: {current_user.role}"
+            )
+
+        # 2. Buscar el template del rol
+        template = db.query(PermissionTemplate).filter(
+            PermissionTemplate.role_name == role_name,
+            PermissionTemplate.is_active == True
+        ).first()
+
+        if not template:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No se encontró configuración de permisos para el rol {role_name}"
+            )
+
+        # 3. Buscar el permiso específico entity:action
+        permission = db.query(Permission).filter(
+            Permission.entity == entity,
+            Permission.action == action
+        ).first()
+
+        if not permission:
+            # Permiso no definido en el sistema
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Permiso no configurado: {entity}:{action}"
+            )
+
+        # 4. Buscar el item de template que vincula el permiso con el rol
+        template_item = db.query(PermissionTemplateItem).filter(
+            PermissionTemplateItem.template_id == template.id,
+            PermissionTemplateItem.permission_id == permission.id
+        ).first()
+
+        if not template_item:
+            # El rol no tiene este permiso asignado
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Tu rol ({role_name}) no tiene permiso para: {entity}:{action}"
+            )
+
+        # 5. Validar el nivel del permiso
+        if template_item.permission_level < min_level:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Nivel de permiso insuficiente. Requiere nivel {min_level}, tienes nivel {template_item.permission_level}"
+            )
+
+        # 6. TODO Fase 2: Verificar scope (all, own, team, department)
+        # Por ahora todos los scopes son "all", esta validación se implementará después
+
+        # 7. Permiso validado exitosamente
+        return current_user
+
+    return permission_checker
