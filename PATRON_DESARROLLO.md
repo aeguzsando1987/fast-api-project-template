@@ -1749,6 +1749,8 @@ def update_estado(self, actividad_id: int, nuevo_estado: str) -> Actividad:
 
 Para agregar una nueva entidad, seguir estos pasos:
 
+### Pasos Obligatorios
+
 - [ ] Crear carpeta `app/entities/<entidad>/`
 - [ ] Crear subcarpetas: models, schemas, repositories, services, controllers, routers
 - [ ] Implementar Model con campos de auditoria
@@ -1762,7 +1764,312 @@ Para agregar una nueva entidad, seguir estos pasos:
 - [ ] Registrar router en main.py
 - [ ] Re-sincronizar base de datos (truncate permisos + restart server)
 - [ ] Probar endpoints en Swagger con diferentes roles
-- [ ] Crear tests unitarios (opcional)
+
+### Pasos Opcionales
+
+- [ ] Crear tests unitarios (pytest)
+- [ ] Implementar caching para endpoints de alta frecuencia (Paso 7)
+- [ ] Agregar documentacion con ejemplos en Swagger
+
+---
+
+## Paso 7: Implementar Caching (Opcional)
+
+Para entidades con alta frecuencia de lectura, implementar caching puede mejorar significativamente el rendimiento.
+
+### Cuando implementar caching:
+
+**SI implementar caching:**
+- Endpoints consultados frecuentemente (listas, enums, catalogos)
+- Datos que cambian raramente (paises, estados, categorias)
+- Consultas costosas (agregaciones, joins complejos)
+- Validaciones repetitivas (permisos de usuario)
+
+**NO implementar caching:**
+- Datos que cambian constantemente (transacciones, logs)
+- Endpoints con baja frecuencia de acceso
+- Datos criticos que requieren consistencia inmediata
+- Entidades pequeñas sin costo de query significativo
+
+### Opcion 1: Cache en Memoria (Simple)
+
+Para proyectos pequeños o entidades especificas.
+
+**Crear archivo:** `app/shared/cache_utils.py`
+
+```python
+from cachetools import TTLCache
+from functools import wraps
+from typing import Callable, Any
+
+# Cache global con TTL
+entity_cache = TTLCache(maxsize=1000, ttl=300)  # 5 minutos
+
+def cached(key_prefix: str, ttl: int = 300):
+    """
+    Decorador para cachear resultados de funciones.
+
+    Args:
+        key_prefix: Prefijo para la clave de cache
+        ttl: Tiempo de vida en segundos
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            # Generar clave unica
+            cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(kwargs))}"
+
+            # Intentar obtener de cache
+            if cache_key in entity_cache:
+                return entity_cache[cache_key]
+
+            # Ejecutar funcion
+            result = func(*args, **kwargs)
+
+            # Guardar en cache
+            entity_cache[cache_key] = result
+
+            return result
+        return wrapper
+    return decorator
+
+def invalidate_cache(key_prefix: str):
+    """Invalida todas las entradas de cache con el prefijo dado."""
+    keys_to_delete = [k for k in entity_cache.keys() if k.startswith(key_prefix)]
+    for key in keys_to_delete:
+        entity_cache.pop(key, None)
+```
+
+**Uso en Service:**
+
+```python
+from app.shared.cache_utils import cached, invalidate_cache
+
+class TecnicoService:
+    @cached(key_prefix="tecnicos:all", ttl=600)  # 10 minutos
+    def get_all_tecnicos(self, skip: int = 0, limit: int = 100):
+        """Lista tecnicos con cache."""
+        return self.repository.get_all(skip=skip, limit=limit)
+
+    @cached(key_prefix="tecnicos:by_especialidad", ttl=600)
+    def get_by_especialidad(self, especialidad: str):
+        """Buscar por especialidad con cache."""
+        return self.repository.get_by_especialidad(especialidad)
+
+    def create_tecnico(self, tecnico_data):
+        """Crear tecnico e invalidar cache."""
+        tecnico = self.repository.create(tecnico_data)
+
+        # Invalidar caches relacionados
+        invalidate_cache("tecnicos:all")
+        invalidate_cache("tecnicos:by_especialidad")
+
+        return tecnico
+
+    def update_tecnico(self, tecnico_id: int, tecnico_data):
+        """Actualizar tecnico e invalidar cache."""
+        tecnico = self.repository.update(tecnico_id, tecnico_data)
+
+        # Invalidar caches
+        invalidate_cache("tecnicos:all")
+        invalidate_cache(f"tecnicos:id:{tecnico_id}")
+
+        return tecnico
+```
+
+**Instalar dependencia:**
+```bash
+pip install cachetools
+```
+
+### Opcion 2: Redis (Produccion)
+
+Para proyectos con multiples instancias o alta carga.
+
+**Configurar Redis en docker-compose.yml:**
+
+```yaml
+services:
+  api:
+    # ... configuracion existente ...
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+  redis_data:
+```
+
+**Crear archivo:** `app/shared/redis_cache.py`
+
+```python
+import redis
+import json
+from typing import Optional, Callable, Any
+from functools import wraps
+import os
+
+redis_client = redis.Redis(
+    host=os.getenv("REDIS_HOST", "localhost"),
+    port=int(os.getenv("REDIS_PORT", "6379")),
+    db=0,
+    decode_responses=True
+)
+
+def redis_cached(key_prefix: str, ttl: int = 300):
+    """
+    Decorador para cachear resultados en Redis.
+
+    Args:
+        key_prefix: Prefijo para la clave
+        ttl: Tiempo de vida en segundos
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            # Generar clave
+            cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(kwargs))}"
+
+            # Intentar obtener de cache
+            cached_data = redis_client.get(cache_key)
+            if cached_data:
+                return json.loads(cached_data)
+
+            # Ejecutar funcion
+            result = func(*args, **kwargs)
+
+            # Guardar en cache
+            redis_client.setex(
+                cache_key,
+                ttl,
+                json.dumps(result, default=str)
+            )
+
+            return result
+        return wrapper
+    return decorator
+
+def invalidate_redis_cache(pattern: str):
+    """Invalida todas las claves que coincidan con el patron."""
+    keys = redis_client.keys(pattern)
+    if keys:
+        redis_client.delete(*keys)
+```
+
+**Uso en Service:**
+
+```python
+from app.shared.redis_cache import redis_cached, invalidate_redis_cache
+
+class TecnicoService:
+    @redis_cached(key_prefix="tecnicos:all", ttl=600)
+    def get_all_tecnicos(self, skip: int = 0, limit: int = 100):
+        return self.repository.get_all(skip=skip, limit=limit)
+
+    def create_tecnico(self, tecnico_data):
+        tecnico = self.repository.create(tecnico_data)
+
+        # Invalidar cache con patron
+        invalidate_redis_cache("tecnicos:*")
+
+        return tecnico
+```
+
+**Instalar dependencias:**
+```bash
+pip install redis
+```
+
+### Recomendaciones de TTL por Tipo de Dato
+
+| Tipo de Dato | TTL Recomendado | Razon |
+|--------------|-----------------|-------|
+| Paises/Estados | 86400s (24h) | Datos estaticos |
+| Enums/Catalogos | 3600s (1h) | Rara vez cambian |
+| Listas paginadas | 300s (5min) | Balance actualizacion/performance |
+| Detalles de entidad | 900s (15min) | Cambios moderados |
+| Busquedas complejas | 300s (5min) | Queries costosas |
+| Permisos de usuario | 600s (10min) | Balance seguridad/performance |
+
+### Estrategia de Invalidacion
+
+**En operaciones de escritura (POST, PUT, DELETE):**
+
+```python
+def create_tecnico(self, tecnico_data):
+    # Crear registro
+    tecnico = self.repository.create(tecnico_data)
+
+    # Invalidar caches relacionados
+    invalidate_cache("tecnicos:all")
+    invalidate_cache(f"tecnicos:by_user:{tecnico.user_id}")
+
+    return tecnico
+
+def update_tecnico(self, tecnico_id: int, tecnico_data):
+    # Actualizar registro
+    tecnico = self.repository.update(tecnico_id, tecnico_data)
+
+    # Invalidar caches especificos
+    invalidate_cache(f"tecnicos:id:{tecnico_id}")
+    invalidate_cache("tecnicos:all")
+
+    return tecnico
+
+def delete_tecnico(self, tecnico_id: int):
+    # Soft delete
+    self.repository.delete(tecnico_id)
+
+    # Invalidar todo el cache de la entidad
+    invalidate_cache("tecnicos:*")
+```
+
+### Monitoreo de Cache (Opcional)
+
+Agregar endpoint de administracion para ver estadisticas:
+
+```python
+# En router de admin
+@router.get("/admin/cache/stats")
+def get_cache_stats(current_user: User = Depends(require_admin)):
+    """Estadisticas de uso de cache (solo Redis)."""
+    if not redis_client:
+        return {"error": "Redis no configurado"}
+
+    info = redis_client.info("stats")
+    return {
+        "keyspace_hits": info.get("keyspace_hits", 0),
+        "keyspace_misses": info.get("keyspace_misses", 0),
+        "hit_rate_percent": round(
+            info.get("keyspace_hits", 0) /
+            (info.get("keyspace_hits", 0) + info.get("keyspace_misses", 1)) * 100,
+            2
+        ),
+        "total_keys": redis_client.dbsize(),
+        "memory_used": info.get("used_memory_human")
+    }
+```
+
+### Checklist de Caching
+
+- [ ] Evaluar si la entidad necesita caching (alta frecuencia de lectura)
+- [ ] Decidir estrategia: Cache en memoria o Redis
+- [ ] Implementar decorador `@cached` en metodos de Service
+- [ ] Definir TTL apropiado por tipo de dato
+- [ ] Implementar invalidacion en operaciones de escritura
+- [ ] Probar que el cache se invalida correctamente
+- [ ] Monitorear hit rate en produccion (opcional)
 
 ---
 
@@ -1822,9 +2129,6 @@ El proyecto implementa un sistema de permisos de 5 niveles (0-4) que permite con
 - Phase 2: Autodiscovery de endpoints
 - Phase 3: User-level overrides (tabla ya creada)
 - Phase 4: Temporal permissions (tabla ya creada)
-
-**Referencia completa:**
-Ver seccion "Granular Permissions System" en CLAUDE.md para documentacion detallada del sistema.
 
 ---
 
