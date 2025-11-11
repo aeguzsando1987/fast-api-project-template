@@ -3,10 +3,10 @@
 > Guia practica con ejemplo completo de dos entidades relacionadas
 
 **Fecha creacion**: 2025-10-02
-**Ultima actualizacion**: 2025-11-07
+**Ultima actualizacion**: 2025-11-11
 **Entidades ejemplo**: Tecnico y Actividad
 **Proposito**: Demostrar el patron de desarrollo completo con relaciones N:1 y sistema de permisos granulares
-**Version del proyecto**: 1.1.1 (Phase 2 Autodiscovery Complete)
+**Version del proyecto**: 1.2.0 (Phase 3 User Overrides Complete)
 
 ---
 
@@ -2143,27 +2143,67 @@ curl -X POST -H "Content-Type: application/x-www-form-urlencoded" \
 
 El proyecto implementa un sistema de permisos de 5 niveles (0-4) que permite control fino sobre cada entidad y accion:
 
-**Estado actual (v1.1.1):**
-- ✅ **Phase 1 Complete** - Database + Core Logic
+**Estado actual (v1.2.0):**
+- ✅ **Phase 1 Complete** - Database + Core Logic (2025-01-04)
 - ✅ **Phase 2 Complete** - Autodiscovery de endpoints (2025-11-07)
+- ✅ **Phase 3 Complete** - User Permission Overrides (2025-11-11)
 - Entidades con permisos: individuals, countries, states, companies, users, examples, health, token, login
 - Total de permisos descubiertos: 79 endpoints
 - Total de asignaciones: 83+ (distribuidas en 5 roles)
+- **10 admin endpoints** para gestión de permisos a nivel de usuario
 
-**Características de Autodiscovery:**
+**Características de Phase 3 - User Overrides:**
+- **3-tier permission priority**: User override → Role template → Default (none)
+- **Temporal permissions**: Permisos con fecha de expiración automática
+- **Effective permissions API**: Resolución completa de permisos para cualquier usuario
+- **Grant/Revoke operations**: Otorgar y revocar permisos con audit trail
+- **Permission extension**: Extender fechas de expiración de permisos temporales
+- **Cleanup automation**: Endpoint para desactivar permisos expirados
+- **Audit trail**: Tracking de quién otorgó permisos y por qué razón
+
+**Admin Endpoints (Phase 3):**
+```
+POST   /admin/user-permissions/grant/{user_id}       - Otorgar permiso override
+DELETE /admin/user-permissions/{id}                  - Revocar permiso
+GET    /admin/user-permissions/user/{user_id}        - Listar overrides del usuario
+GET    /admin/user-permissions/user/{user_id}/effective - Ver permisos efectivos
+GET    /admin/user-permissions/user/{user_id}/details   - Vista detallada con relaciones
+PATCH  /admin/user-permissions/{id}/extend          - Extender expiración
+POST   /admin/user-permissions/cleanup-expired      - Limpiar permisos expirados
+GET    /admin/user-permissions/levels               - Información de niveles de permiso
+```
+
+**Características de Autodiscovery (Phase 2):**
 - Escaneo automático en startup del servidor
 - CLI command: `python scripts.py autodiscover [--dry-run]`
 - Inferencia inteligente de entity/action desde rutas
 - Operación idempotente (no crea duplicados)
 - 79 endpoints registrados automáticamente
 
+**Ejemplo de uso de User Overrides:**
+```python
+# Otorgar permiso temporal de delete a un Collaborator por 24 horas
+POST /admin/user-permissions/grant/5
+{
+    "entity": "companies",
+    "action": "delete",
+    "level": 4,
+    "hours": 24,
+    "reason": "Limpieza de datos temporal"
+}
+
+# Ver permisos efectivos del usuario (incluye overrides + template)
+GET /admin/user-permissions/user/5/effective
+```
+
 **Próximas fases:**
-- ⏳ Phase 3: User-level overrides (tabla ya creada)
-- ⏳ Phase 4: Temporal permissions (tabla ya creada)
+- ⏳ Phase 4: Scope-based permissions (own/team/department filtering)
+- ⏳ Phase 5: Permission groups para asignación masiva
+- ⏳ Phase 6: Admin UI para gestión visual de permisos
 
 ---
 
 **Fecha creacion**: 2025-10-02
-**Ultima actualizacion**: 2025-11-07
+**Ultima actualizacion**: 2025-11-11
 **Mantenido por**: Eric Guzman
-**Version del proyecto**: 1.1.1 (Phase 2 Autodiscovery Complete)
+**Version del proyecto**: 1.2.0 (Phase 3 User Overrides Complete)

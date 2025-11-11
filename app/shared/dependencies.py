@@ -389,83 +389,130 @@ def require_permission(entity: str, action: str, min_level: int = 1):
         3. Valida el nivel mínimo requerido
         4. Permite o deniega el acceso
 
-    NOTA: Para Fase 1, esta función verifica contra la tabla permission_templates.
-    En fases posteriores, también verificará user_permissions (overrides individuales).
+    NOTA Phase 3: Esta función ahora verifica user_permissions primero (overrides),
+    luego permission_templates (rol), con soporte para permisos temporales.
     """
     def permission_checker(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
     ) -> User:
-        from app.shared.models.permission_template import PermissionTemplate
-        from app.shared.models.permission_template_item import PermissionTemplateItem
-        from app.shared.models.permission import Permission
+        # Usar función auxiliar para obtener nivel efectivo
+        effective_level = get_effective_permission(current_user.id, entity, action, db)
 
-        # 1. Obtener el template del rol del usuario
-        # Mapeo de roles legacy (1-5) a nombres de templates
-        role_mapping = {
-            1: "Admin",
-            2: "Manager",
-            3: "Collaborator",
-            4: "Reader",
-            5: "Guest"
-        }
-
-        role_name = role_mapping.get(current_user.role)
-        if not role_name:
+        # Validar el nivel contra el mínimo requerido
+        if effective_level < min_level:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Rol de usuario inválido: {current_user.role}"
+                detail=f"Permiso insuficiente para {entity}:{action}. Requiere nivel {min_level}, tienes nivel {effective_level}"
             )
 
-        # 2. Buscar el template del rol
-        template = db.query(PermissionTemplate).filter(
-            PermissionTemplate.role_name == role_name,
-            PermissionTemplate.is_active == True
-        ).first()
-
-        if not template:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"No se encontró configuración de permisos para el rol {role_name}"
-            )
-
-        # 3. Buscar el permiso específico entity:action
-        permission = db.query(Permission).filter(
-            Permission.entity == entity,
-            Permission.action == action
-        ).first()
-
-        if not permission:
-            # Permiso no definido en el sistema
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Permiso no configurado: {entity}:{action}"
-            )
-
-        # 4. Buscar el item de template que vincula el permiso con el rol
-        template_item = db.query(PermissionTemplateItem).filter(
-            PermissionTemplateItem.template_id == template.id,
-            PermissionTemplateItem.permission_id == permission.id
-        ).first()
-
-        if not template_item:
-            # El rol no tiene este permiso asignado
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Tu rol ({role_name}) no tiene permiso para: {entity}:{action}"
-            )
-
-        # 5. Validar el nivel del permiso
-        if template_item.permission_level < min_level:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Nivel de permiso insuficiente. Requiere nivel {min_level}, tienes nivel {template_item.permission_level}"
-            )
-
-        # 6. TODO Fase 2: Verificar scope (all, own, team, department)
-        # Por ahora todos los scopes son "all", esta validación se implementará después
-
-        # 7. Permiso validado exitosamente
         return current_user
 
     return permission_checker
+
+
+def get_effective_permission(user_id: int, entity: str, action: str, db: Session) -> int:
+    """
+    Obtiene el nivel de permiso efectivo para un usuario en una entidad/acción específica.
+
+    Prioridad de resolución (Phase 3):
+    1. User-level permissions (más alta prioridad) - Permisos específicos del usuario
+       - Válidos si no han expirado (valid_until IS NULL o > NOW())
+       - Activos (is_active = True)
+    2. Template permissions (rol del usuario)
+    3. Default: 0 (sin acceso)
+
+    Args:
+        user_id: ID del usuario
+        entity: Nombre de la entidad (ej: "individuals")
+        action: Acción específica (ej: "create", "delete")
+        db: Sesión de base de datos
+
+    Returns:
+        Nivel de permiso efectivo (0-4)
+            0 = None (sin acceso)
+            1 = Read (solo lectura)
+            2 = Update (lectura + actualización)
+            3 = Create (lectura + creación + actualización)
+            4 = Delete (acceso total)
+
+    Ejemplo:
+        effective_level = get_effective_permission(5, "companies", "delete", db)
+        # Retorna 4 si el usuario tiene permiso, 0 si no
+    """
+    from datetime import datetime
+    from app.shared.models.user_permission import UserPermission
+    from app.shared.models.permission import Permission
+    from app.shared.models.permission_template import PermissionTemplate
+    from app.shared.models.permission_template_item import PermissionTemplateItem
+
+    # 1. PRIORIDAD ALTA: Buscar user-level permission (override)
+    # Buscar el permiso específico entity:action
+    permission = db.query(Permission).filter(
+        Permission.entity == entity,
+        Permission.action == action
+    ).first()
+
+    if permission:
+        # Buscar override de usuario activo y no expirado
+        user_perm = db.query(UserPermission).filter(
+            UserPermission.user_id == user_id,
+            UserPermission.permission_id == permission.id,
+            UserPermission.is_active == True
+        ).first()
+
+        if user_perm:
+            # Verificar si el permiso temporal ha expirado
+            if user_perm.valid_until:
+                if user_perm.valid_until < datetime.utcnow():
+                    # Permiso expirado, continuar a template
+                    pass
+                else:
+                    # Permiso temporal válido
+                    return user_perm.permission_level
+            else:
+                # Permiso permanente (valid_until IS NULL)
+                return user_perm.permission_level
+
+    # 2. PRIORIDAD MEDIA: Buscar template permission (rol)
+    # Obtener usuario para conocer su rol
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return 0  # Usuario no existe
+
+    # Mapeo de roles legacy (1-5) a nombres de templates
+    role_mapping = {
+        1: "Admin",
+        2: "Manager",
+        3: "Collaborator",
+        4: "Reader",
+        5: "Guest"
+    }
+
+    role_name = role_mapping.get(user.role)
+    if not role_name:
+        return 0  # Rol inválido
+
+    # Buscar template del rol
+    template = db.query(PermissionTemplate).filter(
+        PermissionTemplate.role_name == role_name,
+        PermissionTemplate.is_active == True
+    ).first()
+
+    if not template:
+        return 0  # Template no encontrado
+
+    if not permission:
+        return 0  # Permiso no definido en el sistema
+
+    # Buscar el item de template
+    template_item = db.query(PermissionTemplateItem).filter(
+        PermissionTemplateItem.template_id == template.id,
+        PermissionTemplateItem.permission_id == permission.id
+    ).first()
+
+    if template_item:
+        return template_item.permission_level
+
+    # 3. DEFAULT: Sin acceso
+    return 0

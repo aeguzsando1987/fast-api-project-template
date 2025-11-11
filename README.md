@@ -314,9 +314,29 @@ Instructions in [migrations/README.md](migrations/README.md#estructura-de-archiv
 
 ---
 
-## What's New (v1.1.1)
+## What's New (v1.2.0)
 
-### Permission Autodiscovery (Phase 2) 🆕
+### User Permission Overrides (Phase 3) 🆕
+Complete implementation of user-level permission overrides with temporal permissions support:
+- **10 admin endpoints** - Full CRUD for managing user-specific permissions
+- **3-tier priority system** - User overrides → Role templates → Default (none)
+- **Temporal permissions** - Grant time-limited access with automatic expiration
+- **Effective permissions API** - View complete permission resolution for any user
+- **Permission extension** - Extend expiration dates for temporary permissions
+- **Cleanup automation** - Endpoint to deactivate expired permissions
+- **Audit trail** - Track who granted permissions and why
+
+**New Admin Endpoints:**
+- `POST /admin/user-permissions/grant/{user_id}` - Grant permission override
+- `DELETE /admin/user-permissions/{id}` - Revoke permission
+- `GET /admin/user-permissions/user/{user_id}` - List user's overrides
+- `GET /admin/user-permissions/user/{user_id}/effective` - View effective permissions
+- `GET /admin/user-permissions/user/{user_id}/details` - Detailed view with relations
+- `PATCH /admin/user-permissions/{id}/extend` - Extend expiration
+- `POST /admin/user-permissions/cleanup-expired` - Clean up expired permissions
+- `GET /admin/user-permissions/levels` - Get permission level information
+
+### Permission Autodiscovery (Phase 2) ✅
 Automatic endpoint scanning and permission registration eliminates manual permission definition:
 - **Automatic sync on startup** - Permissions table always reflects actual API routes
 - **CLI command** - `python scripts.py autodiscover` with dry-run mode
@@ -324,7 +344,7 @@ Automatic endpoint scanning and permission registration eliminates manual permis
 - **Zero manual maintenance** - New entities auto-register permissions
 - **Intelligent inference** - Extracts entity/action from HTTP method + path
 
-### Companies Entity (v1.1.0)
+### Companies Entity (v1.1.0) ✅
 A base entity that can be of great initial use for any project. The entity has the following features:
 - 20 production-ready endpoints
 - 7 granular permissions
@@ -334,18 +354,23 @@ A base entity that can be of great initial use for any project. The entity has t
 - Status management (active, inactive, suspended, waiting)
 
 ### Bug Fixes
-- Fixed User.username AttributeError in /details endpoint
-- Updated bidirectional relationships in Country/State models
+- Fixed Pydantic Field validation for optional fields with constraints (Phase 3)
+- Fixed User.username AttributeError in /details endpoint (Phase 2)
+- Updated bidirectional relationships in Country/State models (Phase 2)
 
 ### Improvements
-- N+1 query prevention with joinedload()
-- Indexed critical fields (tin, email, status)
-- Optimized search queries
+- User-level permission override system with temporal support (Phase 3)
+- Effective permission resolution with priority handling (Phase 3)
+- Permission grant/revoke audit trail (Phase 3)
+- N+1 query prevention with joinedload() (Phase 2)
+- Indexed critical fields (tin, email, status) (Phase 2)
+- Optimized search queries (Phase 2)
 
 ## Next Steps
 
 - Add a method and UI to load the countries and states from a CSV file.
 - UI demo to interact with base entities.
+- Phase 4: Scope-based permissions (own/team/department filtering)
 
 ---
 
@@ -374,5 +399,5 @@ MIT License - Free for personal and commercial use.
 
 ---
 
-**Version:** 1.1.1
-**Last Updated:** 2025-11-07
+**Version:** 1.2.0
+**Last Updated:** 2025-11-11
