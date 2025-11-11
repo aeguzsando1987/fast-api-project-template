@@ -7,14 +7,31 @@ Todos los scopes están configurados en 'all' por defecto (acceso total).
 IMPORTANTE: Este archivo se ejecuta en cada inicio del servidor de forma idempotente.
 Solo se insertan datos si las tablas están vacías.
 
+NOTA SOBRE AUTODISCOVERY (Phase 2):
+A partir de la version 1.1.1, el sistema incluye autodiscovery automatico de permisos.
+Los permisos definidos aqui sirven como SEED INICIAL y EJEMPLO.
+El autodiscovery escanea automaticamente todos los endpoints al iniciar el servidor y:
+  1. Detecta nuevas rutas y las agrega a la tabla permissions
+  2. No duplica permisos existentes
+  3. Permite agregar entidades sin modificar manualmente este archivo
+
+Para entidades nuevas:
+  - Opcion 1 (Recomendado): Dejar que autodiscovery las detecte automaticamente
+  - Opcion 2: Agregarlas manualmente aqui si necesitas descripciones custom
+  - Opcion 3: Usar comando CLI: python scripts.py autodiscover --dry-run
+
 Autor: Eric Guzman
-Fecha: 2025-01-04
+Fecha creacion: 2025-01-04
+Ultima actualizacion: 2025-11-06 (Phase 2: Autodiscovery)
 """
 
 # ==================== PERMISOS BASE ====================
 # Convención:
 # - CRUD estándar: list, get, create, update, delete
 # - Custom: <action_descriptive> para endpoints especiales
+#
+# NOTA: Los permisos aqui definidos son EJEMPLOS de las entidades existentes.
+# El sistema de autodiscovery complementa esta lista automaticamente.
 
 BASE_PERMISSIONS = [
     # ==================== INDIVIDUALS ====================

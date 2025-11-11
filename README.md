@@ -230,6 +230,10 @@ python scripts.py truncate
 # Truncates the whole database (alternative method)
 python scripts.py truncate-hard
 
+# Scan endpoints and sync permissions (Phase 2 - Autodiscovery)
+python scripts.py autodiscover           # Production mode (applies changes)
+python scripts.py autodiscover --dry-run # Preview mode (no changes)
+
 # Show help
 python scripts.py help
 ```
@@ -310,10 +314,18 @@ Instructions in [migrations/README.md](migrations/README.md#estructura-de-archiv
 
 ---
 
-## What's New (v1.1.0)
+## What's New (v1.1.1)
 
-### Companies Entity
-A base entity that cab be of great initial use for any project. The entitty has the following features:
+### Permission Autodiscovery (Phase 2) 🆕
+Automatic endpoint scanning and permission registration eliminates manual permission definition:
+- **Automatic sync on startup** - Permissions table always reflects actual API routes
+- **CLI command** - `python scripts.py autodiscover` with dry-run mode
+- **79 endpoints discovered** - All entities automatically registered
+- **Zero manual maintenance** - New entities auto-register permissions
+- **Intelligent inference** - Extracts entity/action from HTTP method + path
+
+### Companies Entity (v1.1.0)
+A base entity that can be of great initial use for any project. The entity has the following features:
 - 20 production-ready endpoints
 - 7 granular permissions
 - TIN validation for 9 tax systems (RFC, EIN, NIF, VAT, CUIT, RUC, RUT, CNPJ, OTHER)
@@ -362,5 +374,5 @@ MIT License - Free for personal and commercial use.
 
 ---
 
-**Version:** 1.1.0
-**Last Updated:** 2025-11-06
+**Version:** 1.1.1
+**Last Updated:** 2025-11-07

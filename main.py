@@ -420,6 +420,16 @@ def startup_event():
     from app.shared.init_db import initialize_database
     initialize_database(db)
 
+    # Ejecutar autodiscovery de permisos (Phase 2)
+    try:
+        from app.shared.autodiscover_permissions import autodiscover_and_sync
+        print("\nEjecutando autodiscovery de permisos...")
+        autodiscover_and_sync(app, db, dry_run=False)
+    except Exception as e:
+        print(f"Error en autodiscovery: {e}")
+        # No bloquear el inicio si falla autodiscovery
+        pass
+
     db.close()
 
 if __name__ == "__main__":

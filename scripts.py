@@ -11,6 +11,7 @@ Uso:
     python scripts.py restart        - Reiniciar servidor
     python scripts.py truncate       - Truncar base de datos (metodo seguro)
     python scripts.py truncate-hard  - Truncar base de datos (metodo alternativo)
+    python scripts.py autodiscover   - Escanear endpoints y sincronizar permisos
     python scripts.py help           - Mostrar ayuda
 
 Autor: E. Guzman
@@ -479,6 +480,101 @@ def cmd_truncate_hard():
         sys.exit(1)
 
 
+# ==================== COMANDO: AUTODISCOVERY DE PERMISOS ====================
+
+def cmd_autodiscover():
+    """Escanea endpoints y sincroniza permisos en la base de datos."""
+    print("=" * 60)
+    print("AUTODISCOVERY DE PERMISOS - PHASE 2")
+    print("=" * 60)
+
+    # Verificar si es dry-run
+    dry_run = '--dry-run' in sys.argv
+
+    if dry_run:
+        print("\nMODO: DRY RUN (solo visualizacion, sin cambios)")
+    else:
+        print("\nMODO: PRODUCCION (aplicara cambios a la base de datos)")
+
+    print("\nCargando aplicacion FastAPI...")
+
+    try:
+        # Importar la aplicacion y dependencias
+        from main import app
+        from database import SessionLocal
+        from app.shared.autodiscover_permissions import discover_endpoints, sync_permissions_to_db
+
+        # Crear sesion de base de datos
+        db = SessionLocal()
+
+        print("OK: Aplicacion cargada correctamente")
+        print(f"OK: Rutas registradas: {len([r for r in app.routes])}")
+
+        # Descubrir endpoints
+        print("\nEscaneando endpoints...")
+        discovered = discover_endpoints(app)
+        print(f"OK: {len(discovered)} endpoints descubiertos")
+
+        # Mostrar resumen por entidad
+        entities = {}
+        for perm in discovered:
+            entity = perm["entity"]
+            if entity not in entities:
+                entities[entity] = []
+            entities[entity].append(perm["action"])
+
+        print("\nResumen por entidad:")
+        for entity, actions in sorted(entities.items()):
+            unique_actions = set(actions)
+            print(f"  - {entity}: {len(actions)} endpoints ({', '.join(sorted(unique_actions))})")
+
+        # Sincronizar con base de datos
+        print("\nSincronizando con base de datos...")
+        stats = sync_permissions_to_db(discovered, db, dry_run=dry_run)
+
+        # Mostrar resultados
+        print("\n" + "=" * 60)
+        print("RESULTADOS")
+        print("=" * 60)
+        print(f"Total descubierto: {stats['total_discovered']}")
+        print(f"Permisos existentes: {stats['existing']}")
+        print(f"Permisos nuevos: {stats['new']}")
+
+        if stats['new'] > 0:
+            print("\nPermisos nuevos encontrados:")
+            for perm in stats['new_permissions']:
+                print(f"  + {perm['entity']}:{perm['action']} ({perm['http_method']} {perm['endpoint']})")
+                print(f"    Descripcion: {perm['description']}")
+
+        if dry_run:
+            print("\nNOTA: Modo dry-run activo. No se aplicaron cambios.")
+            print("Ejecuta sin --dry-run para aplicar los cambios:")
+            print("  python scripts.py autodiscover")
+        else:
+            print(f"\nOK: {stats['new']} permisos agregados a la base de datos")
+
+        print("\n" + "=" * 60)
+        print("Autodiscovery completado exitosamente")
+        print("=" * 60)
+
+        # Cerrar sesion
+        db.close()
+
+    except ImportError as e:
+        print(f"\nError: No se pudo importar modulo requerido")
+        print(f"Detalle: {e}")
+        print("\nVerifica que:")
+        print("  - La aplicacion este correctamente configurada")
+        print("  - La base de datos este accesible")
+        print("  - Todas las dependencias esten instaladas")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\nError inesperado: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
 # ==================== COMANDO: AYUDA ====================
 
 def cmd_help():
@@ -503,6 +599,7 @@ def main():
         'restart': cmd_restart,
         'truncate': cmd_truncate,
         'truncate-hard': cmd_truncate_hard,
+        'autodiscover': cmd_autodiscover,
         'help': cmd_help,
         '--help': cmd_help,
         '-h': cmd_help,
@@ -519,6 +616,7 @@ def main():
         print("  restart        - Reiniciar servidor")
         print("  truncate       - Truncar base de datos (metodo seguro)")
         print("  truncate-hard  - Truncar base de datos (metodo alternativo)")
+        print("  autodiscover   - Escanear endpoints y sincronizar permisos")
         print("  help           - Mostrar ayuda")
         sys.exit(1)
 

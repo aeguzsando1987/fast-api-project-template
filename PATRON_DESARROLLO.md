@@ -3,9 +3,10 @@
 > Guia practica con ejemplo completo de dos entidades relacionadas
 
 **Fecha creacion**: 2025-10-02
-**Ultima actualizacion**: 2025-11-06
+**Ultima actualizacion**: 2025-11-07
 **Entidades ejemplo**: Tecnico y Actividad
 **Proposito**: Demostrar el patron de desarrollo completo con relaciones N:1 y sistema de permisos granulares
+**Version del proyecto**: 1.1.1 (Phase 2 Autodiscovery Complete)
 
 ---
 
@@ -969,66 +970,71 @@ def get_actividades_by_estado(
 
 ---
 
-## Paso 2.7: Definir Permisos Granulares
+## Paso 2.7: Definir Permisos Granulares (OPCIONAL - Autodiscovery Activo)
 
-### Ubicacion: app/shared/data/permissions_seed_data.py
+### ⚡ IMPORTANTE: Autodiscovery de Permisos (Phase 2 - ACTIVO)
 
-Cada entidad requiere definir permisos especificos y asignarlos a los roles.
+**A partir de la versión 1.1.1, el sistema incluye autodiscovery automático de permisos.**
+
+Los permisos se registran automáticamente al:
+1. **Iniciar el servidor** - `python main.py` escanea todos los endpoints
+2. **Ejecutar CLI** - `python scripts.py autodiscover` (modo manual)
+
+**¿Cuándo usar cada método?**
+
+### Opción 1: Autodiscovery (RECOMENDADO) ⭐
+
+Dejar que el sistema detecte automáticamente los endpoints:
+
+```bash
+# Modo producción (aplica cambios)
+python scripts.py autodiscover
+
+# Modo dry-run (solo visualizar)
+python scripts.py autodiscover --dry-run
+```
+
+**Ventajas:**
+- ✅ Cero mantenimiento manual
+- ✅ Siempre sincronizado con rutas reales
+- ✅ Detecta automáticamente: entity, action, endpoint, http_method
+- ✅ Idempotente (no crea duplicados)
+
+**Reglas de inferencia automática:**
+- `GET /tecnicos/` → entity: "tecnicos", action: "list"
+- `GET /tecnicos/{id}` → entity: "tecnicos", action: "get"
+- `POST /tecnicos/` → entity: "tecnicos", action: "create"
+- `PUT /tecnicos/{id}` → entity: "tecnicos", action: "update"
+- `DELETE /tecnicos/{id}` → entity: "tecnicos", action: "delete"
+- `GET /tecnicos/search` → entity: "tecnicos", action: "search"
+- `GET /tecnicos/statistics` → entity: "tecnicos", action: "view_statistics"
+
+### Opción 2: Definición Manual (Solo si necesitas descripciones custom)
+
+Si requieres descripciones específicas o permisos especiales, puedes agregar manualmente en `app/shared/data/permissions_seed_data.py`:
 
 **Estructura de permisos para Tecnico:**
 
 ```python
-# En PERMISSIONS_DATA
+# En PERMISSIONS_DATA (solo si necesitas override manual)
 {
     "entity": "tecnicos",
     "action": "list",
     "endpoint": "/tecnicos/",
     "http_method": "GET",
-    "description": "Listar todos los tecnicos"
+    "description": "Listar todos los tecnicos del sistema"  # Descripción custom
 },
 {
     "entity": "tecnicos",
     "action": "get",
     "endpoint": "/tecnicos/{id}",
     "http_method": "GET",
-    "description": "Obtener tecnico por ID"
-},
-{
-    "entity": "tecnicos",
-    "action": "create",
-    "endpoint": "/tecnicos/",
-    "http_method": "POST",
-    "description": "Crear nuevo tecnico"
-},
-{
-    "entity": "tecnicos",
-    "action": "update",
-    "endpoint": "/tecnicos/{id}",
-    "http_method": "PUT",
-    "description": "Actualizar tecnico"
-},
-{
-    "entity": "tecnicos",
-    "action": "delete",
-    "endpoint": "/tecnicos/{id}",
-    "http_method": "DELETE",
-    "description": "Eliminar tecnico (soft delete)"
-},
-```
-
-**Estructura de permisos para Actividad:**
-
-```python
-# Similar estructura para actividades
-{
-    "entity": "actividades",
-    "action": "list",
-    "endpoint": "/actividades/",
-    "http_method": "GET",
-    "description": "Listar todas las actividades"
+    "description": "Obtener tecnico por ID con detalles completos"
 },
 # ... resto de acciones CRUD
 ```
+
+**NOTA:** Autodiscovery no sobrescribe permisos existentes, solo agrega nuevos.
 
 **Asignacion de permisos por rol en TEMPLATE_PERMISSION_MATRIX:**
 
@@ -1098,8 +1104,21 @@ TEMPLATE_PERMISSION_MATRIX = {
 | Create | 3 | Crear registros (POST) | Read + Update |
 | Delete | 4 | Eliminar registros (DELETE) | Read + Update + Create |
 
-**IMPORTANTE**: Despues de agregar permisos, ejecutar:
+**IMPORTANTE**: Después de agregar nuevas entidades:
 
+### Con Autodiscovery (Recomendado):
+```bash
+# Solo reiniciar servidor (autodiscovery se ejecuta automáticamente)
+python main.py
+```
+
+O ejecutar manualmente:
+```bash
+# Escanear y sincronizar permisos
+python scripts.py autodiscover
+```
+
+### Método Manual (solo si editaste permissions_seed_data.py):
 ```bash
 # Truncar base de datos para recargar permisos
 python truncate_db.py
@@ -1758,18 +1777,23 @@ Para agregar una nueva entidad, seguir estos pasos:
 - [ ] Implementar Repository heredando de BaseRepository
 - [ ] Implementar Service con validaciones de negocio
 - [ ] Implementar Controller
-- [ ] Definir permisos en `permissions_seed_data.py` (5 CRUD + customs)
-- [ ] Asignar permisos a roles en `TEMPLATE_PERMISSION_MATRIX`
 - [ ] Implementar Router con `Depends(require_permission(entity, action))`
 - [ ] Registrar router en main.py
-- [ ] Re-sincronizar base de datos (truncate permisos + restart server)
+- [ ] ⚡ **Reiniciar servidor** - Autodiscovery registrará permisos automáticamente
+- [ ] **[OPCIONAL]** Asignar permisos a roles en `TEMPLATE_PERMISSION_MATRIX` (si necesitas niveles custom)
 - [ ] Probar endpoints en Swagger con diferentes roles
+
+### Pasos Eliminados (Autodiscovery los maneja) ✅
+
+- ~~Definir permisos en `permissions_seed_data.py`~~ → Autodiscovery lo hace automáticamente
+- ~~Re-sincronizar base de datos (truncate permisos)~~ → Ya no es necesario
 
 ### Pasos Opcionales
 
 - [ ] Crear tests unitarios (pytest)
 - [ ] Implementar caching para endpoints de alta frecuencia (Paso 7)
 - [ ] Agregar documentacion con ejemplos en Swagger
+- [ ] Ejecutar `python scripts.py autodiscover --dry-run` para verificar permisos detectados
 
 ---
 
@@ -2119,20 +2143,27 @@ curl -X POST -H "Content-Type: application/x-www-form-urlencoded" \
 
 El proyecto implementa un sistema de permisos de 5 niveles (0-4) que permite control fino sobre cada entidad y accion:
 
-**Estado actual (v1.1.0):**
-- Sistema de permisos: Phase 1 Complete (Database + Core Logic)
-- Entidades con permisos: individuals, countries, states, companies
-- Total de permisos definidos: 24
-- Total de asignaciones: 83 (distribuidas en 5 roles)
+**Estado actual (v1.1.1):**
+- ✅ **Phase 1 Complete** - Database + Core Logic
+- ✅ **Phase 2 Complete** - Autodiscovery de endpoints (2025-11-07)
+- Entidades con permisos: individuals, countries, states, companies, users, examples, health, token, login
+- Total de permisos descubiertos: 79 endpoints
+- Total de asignaciones: 83+ (distribuidas en 5 roles)
 
-**Proximas fases:**
-- Phase 2: Autodiscovery de endpoints
-- Phase 3: User-level overrides (tabla ya creada)
-- Phase 4: Temporal permissions (tabla ya creada)
+**Características de Autodiscovery:**
+- Escaneo automático en startup del servidor
+- CLI command: `python scripts.py autodiscover [--dry-run]`
+- Inferencia inteligente de entity/action desde rutas
+- Operación idempotente (no crea duplicados)
+- 79 endpoints registrados automáticamente
+
+**Próximas fases:**
+- ⏳ Phase 3: User-level overrides (tabla ya creada)
+- ⏳ Phase 4: Temporal permissions (tabla ya creada)
 
 ---
 
 **Fecha creacion**: 2025-10-02
-**Ultima actualizacion**: 2025-11-06
+**Ultima actualizacion**: 2025-11-07
 **Mantenido por**: Eric Guzman
-**Version del proyecto**: 1.1.0
+**Version del proyecto**: 1.1.1 (Phase 2 Autodiscovery Complete)
