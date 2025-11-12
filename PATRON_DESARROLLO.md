@@ -10,6 +10,66 @@
 
 ---
 
+## Introduccion
+
+Esta plantilla implementa un patron de arquitectura de 7 capas para FastAPI que facilita el desarrollo de APIs REST empresariales escalables y mantenibles. El patron esta disenado para:
+
+- **Separar responsabilidades**: Cada capa tiene un proposito especifico (routing, validacion, logica de negocio, acceso a datos)
+- **Facilitar testing**: Las capas independientes permiten pruebas unitarias aisladas
+- **Escalabilidad**: Agregar nuevas entidades sigue un patron consistente y predecible
+- **Mantenibilidad**: El codigo organizado facilita cambios y refactorizaciones
+- **Reutilizacion**: BaseRepository elimina codigo repetitivo en CRUD operations
+
+### Sistema de Permisos Granulares (v1.2.0)
+
+La plantilla incluye un sistema de permisos de 5 niveles (0-4) completamente implementado:
+
+- **Phase 1**: Base de datos + logica core (2025-01-04)
+- **Phase 2**: Autodiscovery de endpoints (2025-11-07) - Los permisos se registran automaticamente
+- **Phase 3**: User Permission Overrides (2025-11-11) - Permisos temporales y overrides a nivel de usuario
+
+**Beneficios para el desarrollador:**
+- No necesitas definir permisos manualmente (autodiscovery los detecta)
+- Proteccion granular por entidad y accion (read, update, create, delete)
+- Overrides temporales para casos especiales sin modificar roles
+- CLI tools para gestion y debugging de permisos
+
+---
+
+## Resumen Ejecutivo: Como Agregar una Nueva Entidad
+
+**Tiempo estimado:** 30-45 minutos por entidad basica
+
+**Pasos principales:**
+
+1. **Crear estructura de carpetas** - `app/entities/<entidad>/` con 6 subcarpetas
+2. **Implementar 6 archivos** siguiendo el patron (Model, Schema, Repository, Service, Controller, Router)
+3. **Registrar router** en `main.py` con `app.include_router()`
+4. **Reiniciar servidor** - Autodiscovery registrara permisos automaticamente
+5. **Probar en Swagger** - Verificar endpoints con diferentes roles
+
+**Caracteristicas automaticas (no requieren trabajo manual):**
+- Permisos: Autodiscovery los detecta y registra al iniciar el servidor
+- CRUD base: BaseRepository provee 10+ metodos listos (create, get, update, delete, search, paginate)
+- Validacion: Pydantic schemas validan automaticamente request/response
+- Soft delete: Todos los registros usan eliminacion logica (is_deleted)
+- Auditoria: Campos created_at, updated_at, is_active incluidos por defecto
+
+**Comandos utiles:**
+```bash
+python main.py                        # Inicia servidor (autodiscovery se ejecuta)
+python scripts.py autodiscover        # Escaneo manual de permisos
+python scripts.py verify-perms        # Verificar permisos efectivos de un usuario
+python scripts.py grant-perm          # Otorgar permiso temporal via CLI
+```
+
+**Archivos de referencia:**
+- Ejemplo completo: `app/entities/individuals/` (40+ campos, relaciones, skills JSONB)
+- Ejemplo geografico: `app/entities/companies/` (20 endpoints, validaciones complejas)
+- Guia detallada: `ADDING_ENTITIES.md`
+
+---
+
 ## Arquitectura de 7 Capas
 
 ```
@@ -1794,6 +1854,8 @@ Para agregar una nueva entidad, seguir estos pasos:
 - [ ] Implementar caching para endpoints de alta frecuencia (Paso 7)
 - [ ] Agregar documentacion con ejemplos en Swagger
 - [ ] Ejecutar `python scripts.py autodiscover --dry-run` para verificar permisos detectados
+- [ ] Probar user overrides con `python scripts.py verify-perms` para diferentes roles
+- [ ] Verificar permisos efectivos y niveles asignados a cada rol
 
 ---
 
@@ -2102,6 +2164,7 @@ def get_cache_stats(current_user: User = Depends(require_admin)):
 **Iniciar servidor**:
 ```bash
 python main.py
+# Autodiscovery se ejecuta automaticamente en startup
 ```
 
 **Crear tablas**:
@@ -2112,6 +2175,24 @@ python -c "from app.database import Base, engine; Base.metadata.create_all(bind=
 **Truncar base de datos**:
 ```bash
 python truncate_db.py
+```
+
+**Autodiscovery de permisos (Phase 2)**:
+```bash
+python scripts.py autodiscover           # Modo produccion (aplica cambios)
+python scripts.py autodiscover --dry-run # Modo preview (sin cambios)
+```
+
+**Gestion de permisos (Phase 3)**:
+```bash
+# Limpiar permisos temporales expirados (ideal para cron jobs)
+python scripts.py cleanup-perms
+
+# Verificar permisos efectivos de un usuario (debugging)
+python scripts.py verify-perms
+
+# Otorgar permiso temporal desde CLI (mantenimiento)
+python scripts.py grant-perm
 ```
 
 **Ver documentacion**:
@@ -2130,12 +2211,30 @@ curl -X POST -H "Content-Type: application/x-www-form-urlencoded" \
 
 ## Archivos de Referencia
 
-- **BaseRepository**: `app/shared/base_repository.py`
-- **Excepciones**: `app/shared/exceptions.py`
-- **Dependencias**: `app/shared/dependencies.py`
-- **Ejemplo completo**: `app/entities/individuals/`
-- **Ejemplo geografico**: `app/entities/countries/` y `app/entities/states/`
-- **Guia detallada**: `ADDING_ENTITIES.md`
+### Core de la plantilla
+- **BaseRepository**: `app/shared/base_repository.py` - 10+ metodos CRUD reutilizables
+- **Excepciones**: `app/shared/exceptions.py` - Excepciones custom por dominio
+- **Dependencias**: `app/shared/dependencies.py` - Guards de autenticacion y permisos
+- **Configuracion**: `app/config/settings.py` - Cargador hibrido (.env + config.toml)
+
+### Sistema de Permisos (Phases 1-3)
+- **Autodiscovery Module**: `app/shared/autodiscover_permissions.py` - Escaneo automatico de endpoints
+- **User Permission Schemas**: `app/shared/schemas/user_permission_schemas.py` - 9 schemas para overrides
+- **User Permission Service**: `app/shared/services/user_permission_service.py` - Logica de overrides temporales
+- **Admin Permissions Router**: `app/shared/routers/admin_permissions_router.py` - 10 endpoints de gestion
+- **Permissions Seed Data**: `app/shared/data/permissions_seed_data.py` - Seed inicial (opcional con autodiscovery)
+
+### Entidades de Ejemplo
+- **Ejemplo completo**: `app/entities/individuals/` - 40+ campos, JSONB skills, relaciones N:1
+- **Ejemplo empresarial**: `app/entities/companies/` - 20 endpoints, TIN validation, estadisticas
+- **Ejemplo geografico**: `app/entities/countries/` y `app/entities/states/` - Relaciones bidireccionales
+- **Ejemplo basico**: `app/entities/examples/` - CRUD simple sin relaciones
+
+### Guias y Documentacion
+- **Guia detallada**: `ADDING_ENTITIES.md` - Paso a paso para agregar entidades
+- **Patron de desarrollo**: `PATRON_DESARROLLO.md` - Este documento
+- **README principal**: `README.md` - Documentacion general del proyecto
+- **Changelog**: `CLAUDE.md` - Historial detallado de cambios (Phases 1-3)
 
 ---
 
