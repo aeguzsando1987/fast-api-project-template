@@ -234,6 +234,11 @@ python scripts.py truncate-hard
 python scripts.py autodiscover           # Production mode (applies changes)
 python scripts.py autodiscover --dry-run # Preview mode (no changes)
 
+# Permission management (Phase 3 - User Overrides)
+python scripts.py cleanup-perms  # Clean up expired temporal permissions
+python scripts.py verify-perms   # Verify effective permissions for a user
+python scripts.py grant-perm     # Grant temporal permission to user
+
 # Show help
 python scripts.py help
 ```
@@ -249,6 +254,49 @@ python scripts.py help
 - Set `DEBUG=false` in config.toml
 - Configure CORS for your domain
 - Use ASGI server (gunicorn + uvicorn)
+
+### Deployment Automation (Phase 3)
+
+**Automated permission cleanup:**
+
+Configure a cron job (Linux) or Task Scheduler (Windows) to clean expired permissions daily:
+
+```bash
+# Linux cron - runs daily at 2:00 AM
+0 2 * * * cd /path/to/project && python scripts.py cleanup-perms >> /var/log/permissions_cleanup.log 2>&1
+```
+
+```powershell
+# Windows Task Scheduler
+$action = New-ScheduledTaskAction -Execute 'python' -Argument 'scripts.py cleanup-perms' -WorkingDirectory 'C:\path\to\project'
+$trigger = New-ScheduledTaskTrigger -Daily -At 2am
+Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "CleanupPermissions"
+```
+
+**Pre-deployment permission verification:**
+
+```bash
+#!/bin/bash
+# Verify permissions before deployment
+echo "1" | python scripts.py verify-perms | grep -q "Nivel 4"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Insufficient permissions for deployment"
+    exit 1
+fi
+```
+
+**Grant temporal permissions for maintenance:**
+
+```bash
+# Grant temporary delete permission for 2 hours during maintenance window
+python scripts.py grant-perm
+# User ID: 5
+# Entity: companies
+# Action: delete
+# Level: 4
+# Hours: 2
+# Reason: Scheduled maintenance - data cleanup
+```
 
 ### Run with Gunicorn
 
@@ -399,5 +447,4 @@ MIT License - Free for personal and commercial use.
 
 ---
 
-**Version:** 1.2.0
 **Last Updated:** 2025-11-11

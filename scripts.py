@@ -12,6 +12,9 @@ Uso:
     python scripts.py truncate       - Truncar base de datos (metodo seguro)
     python scripts.py truncate-hard  - Truncar base de datos (metodo alternativo)
     python scripts.py autodiscover   - Escanear endpoints y sincronizar permisos
+    python scripts.py cleanup-perms  - Limpiar permisos temporales expirados
+    python scripts.py verify-perms   - Verificar permisos efectivos de un usuario
+    python scripts.py grant-perm     - Otorgar permiso temporal a usuario
     python scripts.py help           - Mostrar ayuda
 
 Autor: E. Guzman
@@ -112,7 +115,7 @@ def get_db_credentials():
     db_suffix_normalized = normalize_db_name(db_suffix)
     db_name = f"bpta_db_{db_suffix_normalized}"
 
-    print(f"\n✓ Nombre final de la base de datos: {db_name}")
+    print(f"\n[OK] Nombre final de la base de datos: {db_name}")
     print()
 
     host = input("Host de PostgreSQL [localhost]: ").strip() or "localhost"
@@ -180,11 +183,11 @@ def create_database(credentials):
             return True
 
         # Crear la base de datos
-        print(f"📦 Creando base de datos '{db_name}'...")
+        print(Colors.info(f"[INFO] Creando base de datos '{db_name}'..."))
         cursor.execute(sql.SQL("CREATE DATABASE {}").format(
             sql.Identifier(db_name)
         ))
-        print(f"✅ Base de datos '{db_name}' creada exitosamente.")
+        print(Colors.success(f"[OK] Base de datos '{db_name}' creada exitosamente."))
 
         cursor.close()
         conn.close()
@@ -575,6 +578,284 @@ def cmd_autodiscover():
         sys.exit(1)
 
 
+# ==================== COMANDO: LIMPIAR PERMISOS EXPIRADOS ====================
+
+def cmd_cleanup_perms():
+    """Limpia permisos temporales expirados (Phase 3)."""
+    print("=" * 60)
+    print("LIMPIEZA DE PERMISOS TEMPORALES EXPIRADOS")
+    print("=" * 60)
+
+    try:
+        from database import SessionLocal
+        from app.shared.services.user_permission_service import UserPermissionService
+
+        db = SessionLocal()
+        service = UserPermissionService(db)
+
+        print("\nBuscando permisos expirados...")
+        count = service.cleanup_expired_permissions()
+
+        print(f"\n {count} permisos expirados desactivados")
+
+        if count > 0:
+            print("\nLos siguientes permisos fueron desactivados:")
+            print("  - Permisos con valid_until < fecha actual")
+            print("  - Estado cambiado a is_active = False")
+        else:
+            print(Colors.success("\n[OK] No hay permisos expirados"))
+
+        db.close()
+
+        print("\n" + "=" * 60)
+        print("Limpieza completada exitosamente")
+        print("=" * 60)
+
+    except ImportError as e:
+        print(f"\n Error: Módulo no encontrado")
+        print(f"Detalle: {e}")
+        print("\nVerifica que:")
+        print("  - La aplicación esté correctamente configurada")
+        print("  - Phase 3 esté implementada")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n Error inesperado: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
+# ==================== COMANDO: VERIFICAR PERMISOS ====================
+
+def cmd_verify_perms():
+    """Verifica permisos efectivos de un usuario (Phase 3)."""
+    print("=" * 60)
+    print("VERIFICACIÓN DE PERMISOS EFECTIVOS")
+    print("=" * 60)
+
+    try:
+        # Solicitar user_id
+        user_id_str = input("\nIngresa el ID del usuario: ").strip()
+
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            print(" Error: El ID debe ser un número")
+            sys.exit(1)
+
+        from database import SessionLocal
+        from app.shared.services.user_permission_service import UserPermissionService
+        from database import User
+
+        db = SessionLocal()
+        service = UserPermissionService(db)
+
+        # Verificar que el usuario existe
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            print(f"\n Error: Usuario con ID {user_id} no encontrado")
+            db.close()
+            sys.exit(1)
+
+        print(f"\nUsuario: {user.name} ({user.email})")
+        print(f"Rol: {user.role}")
+
+        # Obtener permisos efectivos
+        print("\n Obteniendo permisos efectivos...")
+        summary = service.get_effective_permissions_summary(user_id)
+
+        # Mostrar permisos
+        print("\n" + "=" * 60)
+        print("PERMISOS EFECTIVOS")
+        print("=" * 60)
+
+        if not summary["permissions"]:
+            print("\n Este usuario no tiene permisos asignados")
+        else:
+            # Agrupar por entidad
+            by_entity = {}
+            for perm in summary["permissions"]:
+                entity = perm["entity"]
+                if entity not in by_entity:
+                    by_entity[entity] = []
+                by_entity[entity].append(perm)
+
+            for entity, perms in sorted(by_entity.items()):
+                print(f"\n {entity.upper()}")
+                print("-" * 40)
+
+                for p in sorted(perms, key=lambda x: x["action"]):
+                    level = p["effective_level"]
+                    source = p["source"]
+
+                    # Mostrar nivel con indicador coloreado
+                    level_indicator = {
+                        0: "[NONE]  ",
+                        1: "[READ]  ",
+                        2: "[UPDATE]",
+                        3: "[CREATE]",
+                        4: "[DELETE]"
+                    }
+
+                    level_color = {
+                        0: Colors.RED,
+                        1: Colors.CYAN,
+                        2: Colors.YELLOW,
+                        3: Colors.GREEN,
+                        4: Colors.MAGENTA
+                    }
+
+                    level_name = {
+                        0: "None",
+                        1: "Read",
+                        2: "Update",
+                        3: "Create",
+                        4: "Delete"
+                    }
+
+                    indicator = level_indicator.get(level, "[?]")
+                    color = level_color.get(level, Colors.RESET)
+                    name = level_name.get(level, "Unknown")
+
+                    # Indicador de override
+                    override_marker = " [OVERRIDE]" if p["has_override"] else ""
+
+                    print(f"  {color}{indicator}{Colors.RESET} {p['action']:20} → Nivel {level} ({name}) - {source}{override_marker}")
+
+                    # Mostrar expiración si es temporal
+                    if p.get("override_expires"):
+                        print(Colors.warning(f"     [EXPIRA] {p['override_expires']}"))
+
+        db.close()
+
+        print("\n" + "=" * 60)
+
+    except ImportError as e:
+        print(Colors.error(f"\n[ERROR] Módulo no encontrado"))
+        print(f"Detalle: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(Colors.error(f"\n[ERROR] Error inesperado: {e}"))
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
+# ==================== COMANDO: OTORGAR PERMISO ====================
+
+def cmd_grant_perm():
+    """Otorga permiso temporal a un usuario (Phase 3)."""
+    print("=" * 60)
+    print("OTORGAR PERMISO TEMPORAL A USUARIO")
+    print("=" * 60)
+
+    try:
+        # Solicitar datos
+        print(Colors.info("\n[INPUT] Ingresa los datos del permiso:"))
+
+        user_id_str = input("  User ID: ").strip()
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            print(Colors.error("[ERROR] El ID debe ser un número"))
+            sys.exit(1)
+
+        entity = input("  Entidad (ej: companies, individuals): ").strip()
+        action = input("  Acción (ej: delete, update, create): ").strip()
+
+        level_str = input("  Nivel (0-4, donde 4=Delete, 3=Create, 2=Update, 1=Read): ").strip()
+        try:
+            level = int(level_str)
+            if not 0 <= level <= 4:
+                raise ValueError
+        except ValueError:
+            print(Colors.error("[ERROR] El nivel debe ser un número entre 0 y 4"))
+            sys.exit(1)
+
+        hours_str = input("  Horas de validez (ENTER para permanente): ").strip()
+        hours = None
+        if hours_str:
+            try:
+                hours = int(hours_str)
+                if hours <= 0:
+                    raise ValueError
+            except ValueError:
+                print(Colors.error("[ERROR] Las horas deben ser un número positivo"))
+                sys.exit(1)
+
+        reason = input("  Razón (opcional): ").strip() or "Otorgado vía CLI"
+
+        # Confirmar
+        print("\n" + "=" * 60)
+        print("CONFIRMACIÓN")
+        print("=" * 60)
+        print(f"Usuario ID: {user_id}")
+        print(f"Permiso: {entity}:{action}")
+        print(f"Nivel: {level}")
+        print(f"Duración: {'Permanente' if not hours else f'{hours} horas'}")
+        print(f"Razón: {reason}")
+
+        confirm = input("\n¿Confirmar? (s/n): ").strip().lower()
+        if confirm not in ['s', 'si', 'y', 'yes']:
+            print(Colors.warning("[CANCELADO] Operación cancelada"))
+            sys.exit(0)
+
+        # Otorgar permiso
+        from database import SessionLocal
+        from app.shared.services.user_permission_service import UserPermissionService
+        from database import User
+
+        db = SessionLocal()
+        service = UserPermissionService(db)
+
+        # Verificar que el usuario existe
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            print(Colors.error(f"\n[ERROR] Usuario con ID {user_id} no encontrado"))
+            db.close()
+            sys.exit(1)
+
+        print(Colors.info(f"\n[PROCESANDO] Otorgando permiso a {user.name} ({user.email})..."))
+
+        # Usar admin user (ID 1) como granted_by
+        admin_id = 1
+
+        permission = service.grant_permission_by_entity_action(
+            user_id=user_id,
+            entity=entity,
+            action=action,
+            level=level,
+            granted_by_user_id=admin_id,
+            hours=hours,
+            reason=reason
+        )
+
+        print(Colors.success(f"\n[OK] Permiso otorgado exitosamente"))
+        print(f"   ID del permiso: {permission.id}")
+
+        if permission.valid_until:
+            print(f"   Válido hasta: {permission.valid_until}")
+        else:
+            print(f"   Válido: Permanente")
+
+        db.close()
+
+        print("\n" + "=" * 60)
+        print("Operación completada")
+        print("=" * 60)
+
+    except ImportError as e:
+        print(Colors.error(f"\n[ERROR] Módulo no encontrado"))
+        print(f"Detalle: {e}")
+        print("\nVerifica que Phase 3 esté implementada")
+        sys.exit(1)
+    except Exception as e:
+        print(Colors.error(f"\n[ERROR] {e}"))
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
 # ==================== COMANDO: AYUDA ====================
 
 def cmd_help():
@@ -600,6 +881,9 @@ def main():
         'truncate': cmd_truncate,
         'truncate-hard': cmd_truncate_hard,
         'autodiscover': cmd_autodiscover,
+        'cleanup-perms': cmd_cleanup_perms,
+        'verify-perms': cmd_verify_perms,
+        'grant-perm': cmd_grant_perm,
         'help': cmd_help,
         '--help': cmd_help,
         '-h': cmd_help,
@@ -617,6 +901,9 @@ def main():
         print("  truncate       - Truncar base de datos (metodo seguro)")
         print("  truncate-hard  - Truncar base de datos (metodo alternativo)")
         print("  autodiscover   - Escanear endpoints y sincronizar permisos")
+        print("  cleanup-perms  - Limpiar permisos temporales expirados")
+        print("  verify-perms   - Verificar permisos efectivos de un usuario")
+        print("  grant-perm     - Otorgar permiso temporal a usuario")
         print("  help           - Mostrar ayuda")
         sys.exit(1)
 
